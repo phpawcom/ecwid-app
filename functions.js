@@ -138,7 +138,9 @@ var initialConfig = {
 		APIsecret: "secret_p8AAiJ9StGsi6qXVKZAGEFH6L8ZLwKVJ",
 		endpointUrl: "https://secure2.authorize.net/gateway/transact.dll",
 		testMode: "true",
-		installed: "yes"
+		installed: "yes",
+		publishable_key: '',
+		secret_key: '',
 	},
 	public: {}
 };
