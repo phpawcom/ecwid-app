@@ -124,11 +124,20 @@
 																</div>
 															</div>
 														</div>
+														<button type="button" name="verify_thawani" class="btn btn-default btn-medium">Verify Thawani API</button>
 													</div>
 													<div class="inline-alert inline-alert--error">This payment processor accepts only Omani Rial.</div>
 												</div>
-
 											</div>
+											<!-- Payment instructions block START -->
+											<div class="columned__item columned__item--shifted">
+												<div class="form-area__title">S4D License</div>
+												<div class="form-area__content">
+													<p>You need to purchase a license from <a href="https://www.s4d.om" target="_blank">The Source for Development</a> to get the key. For more details about how to get the key, <a href="https://www.s4d.om/g/d" target="_blank">click here</a></p>
+													<p>You can get testing API keys from <a href="https://developer.thawani.om/#introduction" target="_blank">Thawani Checkout API Documentation</a></p>
+												</div>
+											</div>
+											<!-- Payment instructions block END -->
 										</div>
 									</div>
 								</div>
@@ -146,7 +155,6 @@
 <script>
 
 // Autosave feature for fields. Complimentary JS for the one from SDK above
-/*
 (function initFieldset() {
 
 	var elms = document.querySelectorAll('.field__input, .field__select, .field__textarea, .radio, .custom-checkbox__input');
@@ -160,16 +168,16 @@
 
 		elms[i].addEventListener('change', function() {
 			if (this.value) {
-				saveUserData(); 
+				saveUserData();
 			}
-			else {				
+			else {
 				saveUserData();
 			}
 		}, false);
 
 		elms[i].addEventListener('click', function() {
 			if (this.value) {
-				saveUserData(); 
+				saveUserData();
 			}
 			else {
 				saveUserData();
@@ -177,13 +185,15 @@
 		}, false);
  	}
 })();
-
- */
 fields_object = function(){
 	"use strict";
 	var data = {};
 	$('input, select, textarea').each(function(){
-		data[$(this).attr('data-name')] = $(this).val();
+		if($(this).is(':checkbox')){
+			data[$(this).attr('data-name')] = $(this).is(':checked')? $(this).val() : '';
+		}else{
+			data[$(this).attr('data-name')] = $(this).val();
+		}
 	});
 	return data;
 }
@@ -218,22 +228,29 @@ $(document).on('keyup', 'input[data-name=s4d_license]', function(){
 	}
 	// console.log('length: ' + $(this).val().length);
 });
-// jQuery('input[data-name=s4d_license]').keyUp(function(){
-	// jQuery(this).prop('disabled', true);
-	// jQuery('.spinner').addClass('is-active');
-	// jQuery('.sms-test-alert').remove();
-	// jQuery.post('http://localhost/business/corporations/wordpress/wp-admin/admin-ajax.php?action=woocommerce_sms_oman_test_sms', {
-	// 	'mobile': jQuery('input[name="s4d_woocommerce_sms_options[test_mobile]"]').val(),
-	// 	'api_username': jQuery('input[name="s4d_woocommerce_sms_options[api_username]"]').val(),
-	// 	'api_password': jQuery('input[name="s4d_woocommerce_sms_options[api_password]"]').val()
-	// }, function(response) {
-	// 	var status = parseInt(response.data.status);
-	// 	jQuery('.spinner.is-active').removeClass('is-active');
-	// 	jQuery('button[name=send_test_sms]').prop('disabled', false);
-	// 	jQuery('.form-table:last').after('<div class="sms-test-alert ' + (response.success? 'updated' : 'error')+ '" style="margin: -5px 0px 10px;"><p>'+response.data.message +'</p></div>');
-	// 	// alert('Got this from the server: ' + response);
-	// });
-// });
+$(document).on('click', 'button[name=verify_thawani]', function(){
+	"use strict";
+	$('body').loading();
+	var holder = $('input[data-name=publishable_key], input[data-name=secret_key]')
+	$.post('ajax.php?op=verifyThawani', fields_object(), function(response) {
+		var status = parseInt(response.status);
+		if(status === 1){
+			holder.parent().find('.field-state--success').show();
+			holder.parent().find('.field-state--close').hide();
+		}else{
+			$.alert({
+				title: 'Thawani API',
+				boxWidth: '500px',
+				useBootstrap: false,
+				content: response.message,
+			});
+			holder.parent().find('.field-state--success').hide();
+			holder.parent().find('.field-state--close').show();
+		}
+	}).always(function() {
+		$('body').loading('stop');
+	});
+});
 
 </script>
 
