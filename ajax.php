@@ -1,5 +1,4 @@
 <?php
-error_reporting(E_ALL & !E_NOTICE);
 include_once (__DIR__.'/config.php');
 include_once (__DIR__.'/s4d/thawani.php');
 $response = ['status' => (int) 0, 'message' => ''];

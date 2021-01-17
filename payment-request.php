@@ -1,14 +1,18 @@
 <?php
+session_start();
+include_once (__DIR__.'/config.php');
 include_once (__DIR__.'/s4d/thawani.php');
-$client_secret = "uozHNpknoA2lKQGAu7nVJmBiga309iAv"; // This is a dummy value. Place your client_secret key here. You received it from Ecwid team in email when registering the app
-//$cipher = "AES-128-CBC";
-$iv = "abcdefghijklmnopqrstuvwx";// this can be generated random if you plan to store it for later but in this case e.g. openssl_random_pseudo_bytes($ivlen);
-$cipher = "aes-128-gcm";
+$client_secret = $AppConfig['ecwid_secret']; // This is a dummy value. Place your client_secret key here. You received it from Ecwid team in email when registering the app
+$cipher = "AES-128-CBC";
+$iv = "B3ap4m13ZqGPLTwK"; // hqaj734yaclAL2Yyws4aO5LU// this can be generated random if you plan to store it for later but in this case e.g. openssl_random_pseudo_bytes($ivlen);
+//$cipher = "aes-128-gcm";
 $ivlen = openssl_cipher_iv_length($cipher);
 $tag = 0;
 
 // If this is a payment request
-$_POST['data'] = '456QJ7r5xIiqK-B1FnNm-EnxJIN2xojCjWRqtu2zFyNxSFKh8724ro2dvjDX7gVw6F4ZbOErkJzd1ijO446MjYwe0Q-PyQMpDV2ayBTdYBJbg0NkyXWdjA5q3qiz0vkOALkemMj4q_XI-QcZxWCzCJkq5exca1ed8SA_-NQHAPAMufyCfMhdF4zpw2ybHsAb-LX-AtMqDP0cc9l-0S2mvJRqsOHa-WDzICW0VHFmSZXO_CFiwERBfN7prUe6Zxl6dWTEKGozvS8RpeMO673gKaKXzrnO8w2pPQiUDOvVwsZqklhqUADG_re5SZecSLBZlxT5WUZ0UvCkxjOkufOW6-uPRIgptsk1ChpUkzKZNFrxjfSZzkwknJMBLFUMKlDuNYa3EOrq7agZSd_wjk0DEUXPpkrHbvFPdXOfWJZX8D98Gujxh_yDJC4R7GeNiLAP3mAciiI8c6En_U06wOHjH7WqF-4XJwiE4pc4LB8kzSClf8fabGYquofQ3zDnVhrywSXkDuqguC4Py32xOXO4USQlBYnmO3LIsUATXJ0XSv12EV7Ll_zRyDI-TmRzbCpzlrWbzI_kBvmqU3tp13OdwgRIe_AyQQcEhn9-6ogxVvKHEndlOdEyXegcK5FLvJ3895TeQISv9OA9ihmsjZXdSc7kdCkzy5NgPTHHp3-MEjISW6QSRwT_9x8htrR5TL3_5dJLOIDUbdii6YQN-Pt_6IY-467Kf21TbKTb9LN_SAvxeqt0JWALscejWlDG-oKhME5M5XvU-HgYmg_hQ71TkDc661-BZMdDF5w55TDqu_z_Z9pev7o3SGSOiz761wx5mUYMUkaLZgeqeZeM9VyGaoDjUFBYF5lgyUC8S8EWz37-0lwV_P__Ev7uuUsWOlXuF_cS388-u3WVB7AWAnA_4ZdlCT2GwWP-z6XJGIPqqj9WqR-QKaBId_t7tqSJTkmToma9cFkqTxoSE4ye63-h_FEt3AV2bHbcaTLLdyro9jZybKCWcZI_C5MVo2N-VRoUUO8sRyNw2W6EUhyU8qwOOyCUO3HMZfe4yk_rSCreggLeip6Osyi4qOrK4DaBKKKJ2kRwIzJRiYZKIIG_ADoqQg3os79dXgy-j-Ko-_NQPr1KUWXOpEvoFAUGZviyDI5ECcodf3tOCP3y6U87WUCBtrI0rZZinO6JxLDTjXBzUcwxJO_fJwYWBUErY90HYn0enqq7dl3KTt2bPkEnsJ9bMTCAYteibQLTykuAL6KAbU2clWnDcu_oHUFsVoiMxlCzha2_sPmZewbZfw8Fg1_eFm6SzW4fAXqr7uZQ8hLDNXFbGCDy-EZyBV7hpoQbH3ozNx7bCtOQYAcA7GRbDTA-utxMMrxZMR-XGy8-FwVQHTz07N8NCKwIntkrIsTgirUTyReFy_gnWUOvrOKTtqNlxJVq2x1kyF1KMOnXq6y7MBGng6SSGuEQq8Pg2PrU9CdvZM-UEfV7M-Kxa7BEcu1gZAaF1RrS2CT6HfyZ8BPNWRPNFUWzhS4Q3pnoCc-hehxao0b3Hs0iK1IyXK901A5UKN-GEWEgZuSLnOp-4t_eeLhVPWswxVgsueRmXt5i8TE817C9AHtY0qIE0TU6wfErdgWkAad25C9ya25JfFkSbkJhqoDBkhS-fr4nnIjqxowpKTsgI8VRDr8_DyAA8n0Zz9fdYCNLeBoeGyc_XnwYKR0uOKMtKHWd8CQpFJ2F-EcTXnFteVnRlRNVugOeF9aIw5834eiSLlMvZ3HTIGzVx9uv8NtZrl4eVrigKkGLCSlTcIiPel0SyHIKjSShAw0C20DSJpSl020-u5zcmwUkbnu9TGm_XBaxx9cNf69whfsCSM4nDhjtuFsNzq0c71wNml3caZXI6rB6PT3VBCgWhOgF0YeuekKAX8DNKcQ1CSC4WOslTMbcIskD4RmBe-ej3bdlP3SmyJ3tfdGbk0jZ9sLh-ApRhnKZGvX7tp2NH89gqIs4kbwTr75tNaoWZ7Y_-MbnAhh9JIliEmGEo8UaJ0lTnUwlKjpKgrOMCFiTBZaXqEah21SmiQvv-gDdhju__unAs8_zjc3l0tee4-XrbSQKZ9yog-PVw1lQs4-MmZVRJ7JjY22Fw-ed9GFqIT_js-ii74G26u7lagsV8YLd3QDn1vD_mEkjsiaSRTKBLjYpWqnNehhnwflLudwgVmeMQzUypM9GnC9hFot9rBauTvkxt8KTHypyy0iOVQzja8Yh9CBCVGQn7VGFi6stSvBsss6sb6p5JdrVGUglYongZju8dU3xYEmpq8zUnSTKPU8mLyOk_hI0pjzkiVbhJxD19TF45c6oI2N58Aewkp-l9n19nDE4muwadc8GyXbJyw4r78BCtVQtnMGGs09HOLPy6EITZVa0X7IQqUwe-fY40L8Q-gRtRXJVs4VTCIeRkcU8D6aFOLYh3Emy10vO9JifCZ2FiJWUXEUihUmpVFb3mIv2damkZZsCKULdoYdW09eYOJijbthf9FwuOwJQ4BQoi_LKfoTqmNSZCS0Zbqvvetc9aIw7qz4UMJei8rlbiXKZS1cFdjrvcJ5JxTuMIPHXO0mcon4iHaWthsKj3hMnV3A8FY7gwSEFn5edczBwVbPqM-ZvoBYJMgV5JwMExEpitXlHznnEseobcX7TG1MnN3_KeIX79E7CVbf96-zJnGHGOgRh5vhugrx1brXZrK3XNMEZv_z9Myo0heDGniDOaa0AI1mS08RmKXPiNg7tZ7gUs8Rfj8aurjvCWa4csHKw1ts_LK36iTew7aQ9IyuzUHqQbjGBaM0P_3VTnM5KgG5HlbXHola9wE8r5AbKwrkoRAzHmyA04qO-IyzBjCXEgMXgjT3mrJwnn9bMCe8V1F6ikXEIoXvyoL7aFTRazA38aWOQpFm8tce0Kjg26bU10UG6uy8tvcYjN9DCl7FGfTn6Ijux9e0xcaOt4024tioXuT2u6ZAhfA52cx4mLh3lCCcM05DAfYtfvXi3Mhb4wDVP_cXT0MeWEDEtNkENvn8Pw8dXGirYee7Gzbam4n_wIR7yd2ORMEm1so_XoBag6ytUX9v_3QN8MHM6hr4HFlVcNj5rGSshGNDfXeHt50oTW5wTeroDIgyqV5z49qIz1DyrGeOIkp1xotuaBb_H9ISfi-FrS9vci3acfdQgott_VNAvqUJDveeldEufyVxZjcB_oNmXiYDCCIVrAiKIVe_zVEO82MrSxlkQP_0He406nTP3WdXp-s8FxRmchH4kQfsWMYwlkpl1PSwrhe61DlH8fHZ3l46DTaTdlMTD1VvW_gNNXzLLINF435apJZQUF4l9dGNiz841dVx-5T63w6cWzEYGg1VjhbeIYR0ppg3enC3-fnpJra4mKWyUuYZYt_Bv9NVUMtj4zJGhH4uCORAGwCKtirfrT_ryM97xpwFFZe6sgMLTshSnk4ZEYyPECPDkCuBHDvlYfLfLePxTJmKRxoqOqxvRs9WtlrShXa3XtsM';
+$_POST['data'] = 'EWRYFsQIQgtIbPKGDNm9vbBe7Rzb0JJAHqa4lC9DjOxfbY1Pm8fgCbOtgjtE_X1R9G4b0ZUEVXKIZq1niBf19SR2Ck7Kr_Ivf_ec680CwcFCrIypYf36APMYjU7lqGIna0kTAPx1oUFg4qevHIemwX-s9d9Xo44comHLOi3OxM7eGZej6pDqrVYF0c1rmb015mv10HwfN4d6VqPPRfpBltwyD1dA-741isd0y9J27uihN_GKv8GxJ_55xoZAGjEu3RWQqj5inMRuVawYTHlWls7WlcaHS6uLHwVqA7258uVP5XUzo60Wq86S9ZU-_me3atbc6E2F1lZTN-1gz6LD88Koqx4EO-vTG2S09DUGkzJ7FTyBcCX3-FGDaO685fIOE7IvvhsfhkQJmKVRt0-xi4G-4P_zQKq5uHe_y-9v5nrYGfk04nptc87H18QWlcRxH8TbWR5SDOjWlrlAEjaTP3PYWT_Od0THEYq1zdVOZPA0gZT9zQ-VH825bd3ee8GAaVp73fPnqBtrplUmzNDVpzklw6CtX8YMcgSNA3VTXxUtTQBAZCQKo7G7-9LrwPHxvVEPpfwNZcOrzUVB96xlAr2n1pMsGDpQ_RwbR0pdlYzLWHQbkuXh2S7_dnrj5axMwOGhQ48A7jmHHx0EtQJkljUIw9G8KTBkpV2b46h8TtymApLsm5eSdW23N6XYRzh9gzsG_w5AM2l3W6u-rNFVIXThTjQbFs8DgUpc21wsC8020v1B0oevT4j8JbRjbBBC_d7dOc76MpJnOx71PdnvVyPXVsASvqwy37FlYEbMs5DZqQyIHGJMze0V0_J3wkwl0XGIXepo007dMLW6EYUn-Xi-JHmS6k1ajA_L9PwhVbRfYjpSlNf5aNhmLcGcpcHYVjdLCJwolf71K9cPqGSx7NPGs0PCow90rAjFaEONpk3Bo4j6jEJ8NkinMG9FEv07ZNTKmWot72L-Eb2n2kGW6s7A0S2twfzn1kqkynfI1DN9zNYUS4rqZc_ZQb8mOOXZyfZP9swoBApFCayuBLWiJmgmVNX9fFQx3KMvdLqwpWbxI-v9chmEcISoploesT3z-JDafnLzzmCfEWgEmYw6MTYzwlMpnOZgabRI-8jE5hEtFT9vbXSZeVYieRiGqhjAsZUE2xpvkeOghXjR3jnTX0ca3A7XdyiNI-169noOizfEV0SLUK2xDue0UU1KApmAtNegchrfZ1Z2S_aJtlbz_UHngHi-cfRI4SdvLqASn15GNroEIx0VY3xsxQ6ILiOJwjEHMFdJkuQJZ-mWNzy4QWp6T91Vck4IUAP_fAeZcQZVSXudQ8IYKHwIZK0leR0zRsq5gDvfUuxqhp0EPaHzj8vfygSkWZRUq9nR4vUg0iJNwg9EIPbsmEAQKg2L83SZB9g7vOdGCQOIC-GfaUgEQ6-gdqAbgnFYZKl7dhkWXscMqIWctqkOE-iAH0c8c4NZNnAC9yIKUXN6504YkWJxZ_ftN8cWHXtTsvtnoTFJ28BqDzpNq0M4pCUO7H8kUkb0VhAUZfYbWkb847FSk2ewh3NgU4-EzTuRbi7sjM4zvKS6MliDBL0r7Vt0d_j1fcnH5ft4R_LHpUD99DSSIiCrzYPBHnKPTW3VUr9c9bipNyOUSdKk4Ex_MXqSTJaWinZcsBSKabQb1J8-Q2-SKow-UYRt_ZYFObiCOPQYDDBZkztjSgWy2VLnfPm72JC52owtP0sZntkzTFTmv0Ie2dJCoh2BM1yDhe9Co0rB5OLDgP_i4rGVS-5sVV6rYwtGIvWMnRabIkDu4fXhqRKN0jRpHrxRoGOb18f2V_wquCuSKLBTMuMzVigTf0eMJsBBrwoXvZ1Ub4ZUX1PbsJ9r7nvpLeFIQQw2i0YvR6DlNvjrEe2qiKC33E8WGODtV-Xe69bcHebHEBNv2QwuR3kgCp51quJPnnTV4hVVux1o7LnA61AjIM_MPMQUfE_e5aTB2GrWHnfwRSzeJuEGZ4JxbR3wOj-OKg9PeqzkqckgXa8uSP17XPEIsW4QKfZxFwmO3zEJ3_GtWJt3wGultiRVAJfQOU-4lC3Cx2txOQ0Ftbrl1OBnQAILpvtcJaqZYUVq-4XHA4vtVoK6enZuvwapGx88HHHsDwfzmvO45i9w_XObivq3ndhP3hGPq7dL8C87yOua_gB9Q7ro3zS5CLoaZmUaz3AL7ApiltW5LX6Wy8-UVtZFK22r7-UyNVj0e7x6hdg2MV-sf4d5uHHf8UBdLbGhUFNuQPUKScfStduTZM1dz4rCCokwpEeg75ML1czBgWjkExDo-SX1TWMsiusI7PHa0RPnRhO_U0KlEu9E7EgyeCxte2dSzc4SWsjJENLFIltWER5RGayXgPXLYLob-zHPfgxh-Rmp-TsrOquHZ79y3kX9V1KiioHWIKmnhug34fCQufoIhCsT466fqHpbimAfHGVPXEhzLQJdm8X6YYOueUudffafNyFdlRYXjWKgakmVJK6pfJS8doF5ECKfVco8tHoLooRKvo-F5-AkCdsabhHHjOchqm26H2YTS4Af6HXvA_5IXA-JGRwt48KXmwAHHdpbRkTnNHP-9mifFZeBDLMiRn72yIcxfaHvdbeZxQqbm9Ps2oWf-4-PJVztG_Euku0AfcfMh4EM6cwzxc50ZbIC0kuth8Bnw04zKdLxfaphKF8xsVoA82QSLdCWQ4qXiux5BcuYNU5CfE0NKYQBMfJ3WAT-KSVFoDNskKvEeH2mYYhuS0omuC3qN2IJK8tEMvlq9lqQ9lyzEu5BgL_mAU2JdzVfUfuWGPudFHWBy8uGPuikOLjslh4pcr-wLHA1f-S__i7jLWEayRuSz7xfGJ8dWGBa12W93y5sfpvizRMFLlzap59rr4Kz_ZWKvTG6K3NDNCghxpapiREoJXMReQHawXX1myG6tbVyj3mU3vqXdBXw_Lmzewh-eLtYYF_pSQQypEXqyWwehy8U0D6Kgao8I4GPoiuVJpZ8LrQsA5cDxv7rHTH9XrGNbCQl1ghBFX-n4iybDe-gLfQiO1pbYN2AqyBABkWiHeA42tuRDVqGBDM0-lVmIyPlEdJwdrEpCWkTuHflDCLHTchG_s7VXau9I5M75RYOBVJpWIoA-6EvDkHZq_oOWAvmcpGWL7wbsPe8Zp8KsQS1FnmURXNVD1e7WEEJxO3c4l4KS9RHWJNfvhw8UoG-aT6cGKLsrhjiknjKfdE5VZeDosN87qGAciIkp374Wj6rLlD7EqNx7xI3xgWlTvggRDnXTBFjjm129pIioESgwPLa41yXtZcy3RYTtSytnKTTtVIu6HsdfKDYW2J68sMLeGIhZTHSHPdezksdBHcfE_cUjcLHVjiooxDtS3l4aGFVAa_P5qPj-H8eZt6vCbf9y7_yYtneukJNPFjb001C-RUYvr6AnUb3f-hKT3ebcleSoPaFJFr_8fgrstsHm5FRTJG-Umfdrt6nW-HSFAGrAGl-4rb7sGHd1kd8BpJadxNM7geJT6PlmVIVDHF_EVOSzzuo8Ha3cVtTp56DIyA56WRz4kCf8zdUzbYgMFB2bf3dPFUfy05xuCGK3GC4ukyPfAUsYCPT4uVDDLizQuNnvcmIUp1tBOz8eiE8Q8j8jlxupKS9GR9y1uLR';
+if(isset($_GET["callbackPayload"])) unset($_POST['data']);
+//$_POST['data'] = '';
 if (isset($_POST["data"])) {
 
 // Functions to decrypt the payment request from Ecwid
@@ -50,126 +54,103 @@ if (isset($_POST["data"])) {
 
   // The resulting JSON from payment request will be in $order variable
   $order = getEcwidPayload($client_secret, $ecwid_payload);
-
-  // Debug preview of the request decoded earlier
-  echo "<h3>REQUEST DETAILS</h3>";
-
-      // Account info from merchant app settings in app interface in Ecwid CP
-    echo '<pre dir="ltr">' . print_r($order, true) . '</pre>';
-      $x_account_id = $order['merchantAppSettings']['merchantId'];
-      $api_key = $order['merchantAppSettings']['apiKey'];
-
-      // OPTIONAL: Split name field into two fields: first name and last name
-      $fullName = explode(" ", $order["cart"]["order"]["billingPerson"]["name"]);
-      $firstName = $fullName[0]; $lastName = $fullName[1];
-
-      // Encode access token and prepare calltack URL template
-      $ciphertext_raw = openssl_encrypt($order['token'],$cipher, $client_secret,$options=0,$iv,$tag);
-      $callbackPayload = base64_encode( $ciphertext_raw);
-      $callbackUrl = "https://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]"."?storeId=".$order['storeId']."&orderNumber=".$order['cart']['order']['orderNumber']."&callbackPayload=".$callbackPayload;
-
-      // Request parameters to pass into payment gateway
-      $request = array(
-        "x_account_id" => $x_account_id,
-        "x_api_key" => $api_key,
-        "x_amount" => $order["cart"]["order"]["total"],
-        "x_currency" => $order["cart"]["currency"],
-        "x_customer_billing_address1" => str_replace(PHP_EOL, ' ' , $order["cart"]["order"]["billingPerson"]["street"]),
-        "x_customer_billing_city" => $order["cart"]["order"]["billingPerson"]["city"],
-        "x_customer_billing_country" => $order["cart"]["order"]["billingPerson"]["countryCode"],
-        "x_customer_billing_state" => $order["cart"]["order"]["billingPerson"]["stateOrProvinceCode"],
-        "x_customer_billing_postcode" => $order["cart"]["order"]["billingPerson"]["postalCode"],
-        "x_customer_email" => $order["cart"]["order"]["email"],
-        "x_customer_first_name" => $firstName,
-        "x_customer_last_name" => $lastName,
-        "x_customer_phone" => $order["cart"]["order"]["billingPerson"]["phone"],
-        "x_customer_shipping_address1" => str_replace(PHP_EOL, ' ', $order["cart"]["order"]["shippingPerson"]["street"]),
-        "x_customer_shipping_city" => $order["cart"]["order"]["shippingPerson"]["city"],
-        "x_customer_shipping_country" => $order["cart"]["order"]["shippingPerson"]["countryCode"],
-        "x_customer_shipping_state" => $order["cart"]["order"]["shippingPerson"]["stateOrProvinceCode"],
-        "x_customer_shipping_postcode" => $order["cart"]["order"]["shippingPerson"]["postalCode"],
-        "x_customer_shipping_phone" => $order["cart"]["order"]["shippingPerson"]["phone"],
-        "x_description" => "Order number". $order['cart']['order']['referenceTransactionId'],
-        "x_reference" => $order['cart']['order']['referenceTransactionId'],
-        "x_url_success" => $callbackUrl."&status=PAID",
-        "x_url_error" => $callbackUrl."&status=CANCELLED",
-        "x_url_cancel" => $order["returnUrl"]
-      );
-
-        // Sign the payment request
-        $signature = payment_sign($request,$api_key);
-        $request["x_signature"] = $signature;
-
-        // Print the request variables to debug
-        echo "<br/>";
-        foreach ($request as $name => $value) {
-          echo "$name: $value<br/>";
-        }
-        echo "<br/>";
-
-        // Print form on a page to submit it from a button press
-        echo "<form action='https://example.paymentpage.com/checkout' method='post' id='payment_form'>";
-            foreach ($request as $name => $value) {
-                echo "<input type='hidden' name='$name' value='$value'></input>";
-            }
-        echo "<input type='submit' value='Submit'>";    
-        echo "</form>";
-        echo "<script>document.querySelector('#payment_form).submit();</script>";
-
-}
-
-      // Function to sign the payment request form
-      function payment_sign($query, $api_key) {
-            $clear_text = '';
-            ksort($query);
-            foreach ($query as $key => $value) {
-                if (substr($key, 0, 2) === "x_") {
-                    $clear_text .= $key . $value;
-                }
-            }
-            $hash = hash_hmac("sha256", $clear_text, $api_key);
-            return str_replace('-', '', $hash);
+  if(is_array($order) && count($order) > 0){
+      $config = [
+          'isTestMode' => (int) ((boolean) $order['merchantAppSettings']['testMode']? 1 : 0), ## Set 1 to work with test mode
+          'public_key' => $order['merchantAppSettings']['publishable_key'],
+          'private_key' => $order['merchantAppSettings']['secret_key'],
+          's4d_license' => $order['merchantAppSettings']['s4d_license'],
+          'remoteLicenseOnly' => true,
+      ];
+      $thawani = new \s4d\payment\thawani($config, $AppConfig['s4d_secret'], function($message){
+          ## Do nothing
+      });
+      if($thawani->isActiveLicense){
+          $items = [];
+          $totalPrice = 0;
+          $sysTotal = $order['cart']['order']['total'] * 1000;
+          if(is_array($order['cart']) && is_array($order['cart']['order']) && is_array($order['cart']['order']['items']) && count($order['cart']['order']['items']) > 0){
+              foreach($order['cart']['order']['items'] as $item){
+                  $unitPrice = $item['productPrice'] * 1000;
+                  array_push($items, ['name' => $item['name'], 'unit_amount' => $unitPrice, 'quantity' => $item['quantity']]);
+                  $totalPrice += ($unitPrice * $item['quantity']);
+              }
+          }
+          if($sysTotal > $totalPrice){
+              array_push($items, [
+                  'name' => 'Other',
+                  'unit_amount' => $sysTotal - $totalPrice,
+                  'quantity' => 1,
+              ]);
+          }
+          parse_str(parse_url($order['returnUrl'])['query'], $orderUrl);
+          $thawaniInvoiceId = rand(1000,9999).$orderUrl['orderId'];
+          $ciphertext_raw = openssl_encrypt($order['token'],$cipher, $client_secret,0,$iv);
+          $callbackPayload = base64_encode( $ciphertext_raw);
+          $configPayload = base64_encode(openssl_encrypt(json_encode($config), $cipher, $client_secret,0,$iv));
+          $callbackUrl = "https://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI']."?storeId=".$order['storeId']."&orderNumber=".$order['cart']['order']['orderNumber']."&callbackPayload=".$callbackPayload.'&config='.$configPayload;
+          $meta = [
+              'client_reference_id' => $thawaniInvoiceId,
+              'products' => $items,
+              'success_url' => $callbackUrl.'&status=PAID',
+              'cancel_url' => $callbackUrl.'&status=CANCELLED',
+              'metadata' => [
+                  'order_id' => $orderUrl['orderId'],
+                  'storeId' => $order['storeId'],
+                  'customerName' => isset($order['cart']['order']['billingPerson']['name'])? $order['cart']['order']['billingPerson']['name'] : '',
+                  'customerPhone' => isset($order['cart']['order']['email'])? $order['cart']['order']['email'] : '',
+                  'customerEmail' => isset($order['cart']['order']['billingPerson']['name'])? $order['cart']['order']['billingPerson']['name'] : '',
+              ]
+          ];
+          $url = $thawani->generatePaymentUrl($meta);
+          if(!empty($url)){
+              $_SESSION['thawani_payment_session'] = $thawani->payment_id;
+          }else{
+              $url = $order['cart']['order']['refererUrl'].'checkout/payment?errorMsg='.htmlspecialchars('There is an error with gateway.<br />'.json_encode($thawani->responseData));
+          }
+      }else{
+          $url = $order['cart']['order']['refererUrl'].'checkout/payment?errorMsg='.htmlspecialchars('Thawani App is not licensed. You need to checkout <a href="https://www.s4d.om">Source for Development</a>');
       }
-
-
+      echo "<script>window.location = '$url';</script>";
+  }
+}
 // If we are returning back to storefront. Callback from payment
 
 if (isset($_GET["callbackPayload"]) && isset($_GET["status"])) {
-
-    // Set variables
-    $client_id = "thawani-gateway-dev";
+    $client_id = $AppConfig['ecwid_app'];
     $c = base64_decode($_GET['callbackPayload']);
-    $token = openssl_decrypt($c, $cipher, $client_secret, $options=0, $iv,$tag);
+    $token = openssl_decrypt($c, $cipher, $client_secret, 0, $iv);
+    $config = openssl_decrypt(base64_decode($_GET['config']), $cipher, $client_secret, 0, $iv);
     $storeId = $_GET['storeId'];
     $orderNumber = $_GET['orderNumber'];
     $status = $_GET['status'];
     $returnUrl = "https://app.ecwid.com/custompaymentapps/$storeId?orderId=$orderNumber&clientId=$client_id";
-
-    // Prepare request body for updating the order
-    $json = json_encode(array(
-        "paymentStatus" => $status,
-        "externalTransactionId" => "transaction_".$orderNumber
-    ));
-
-    // URL used to update the order via Ecwid REST API
-    $url = "https://app.ecwid.com/api/v3/$storeId/orders/transaction_$orderNumber?token=$token";
-  
-    // Send request to update order
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json','Content-Length: ' . strlen($json)));
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
-    curl_setopt($ch, CURLOPT_POSTFIELDS,$json);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $response = curl_exec($ch);
-    curl_close($ch);
-
-    // return customer back to storefront
-    echo "<script>window.location = '$returnUrl'</script>";
-
-}
-
-else { 
+    if(!empty($config)){
+        $config = json_decode($config, true);
+    }
+    if(is_array($config) && !empty($token)){
+        $thawani = new \s4d\payment\thawani($config, $AppConfig['s4d_secret']);
+        $thawani->checkPaymentStatus($_SESSION['thawani_payment_session']);
+        $json = json_encode(array(
+            "paymentStatus" => $thawani->payment_status == 1? 'PAID' : 'CANCELLED',
+            "externalTransactionId" => "transaction_".$orderNumber
+        ));
+        unset($_SESSION['thawani_payment_session']);
+        $url = "https://app.ecwid.com/api/v3/$storeId/orders/transaction_$orderNumber?token=$token";
+        // Send request to update order
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json', 'Content-Length: ' . strlen($json)));
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        echo "<script>window.location = '$returnUrl'</script>";
+    }else{
+        exit('wrong TOKEN');
+    }
+} else {
 
   header('HTTP/1.0 403 Forbidden');
   echo 'Access forbidden!';
