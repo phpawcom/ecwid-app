@@ -115,7 +115,9 @@ if (isset($_POST["data"])) {
       }else{
           $url = $order['cart']['order']['refererUrl'] . 'checkout/payment?errorMsg=' . htmlspecialchars('Thawani gateway only support Omani Rial');
       }
+      header('location:'.$url);
       echo "<script>window.location = '$url';</script>";
+      exit;
   }
 }
 // If we are returning back to storefront. Callback from payment
@@ -150,7 +152,9 @@ if (isset($_GET["callbackPayload"]) && isset($_GET["status"])) {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $response = curl_exec($ch);
         curl_close($ch);
+        header('location:'.$returnUrl);
         echo "<script>window.location = '$returnUrl'</script>";
+        exit;
     }else{
         exit('wrong TOKEN');
     }
