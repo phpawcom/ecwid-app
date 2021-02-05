@@ -139,8 +139,8 @@ var initialConfig = {
 		endpointUrl: "https://secure2.authorize.net/gateway/transact.dll",
 		testMode: "true",
 		installed: "yes",
-		publishable_key: '',
-		secret_key: '',
+		publishable_key: 'HGvTMLDssJghr9tlN9gr4DVYt0qyBy',
+		secret_key: 'rRQ26GcsZzoEhbrP2HZvLYDbn9C9et',
 	},
 	public: {}
 };
