@@ -1,7 +1,7 @@
 // Initialize the application
 
 	EcwidApp.init({
-	  app_id: 'thawani-gateway-dev', // use your application namespace
+	  app_id: '{ecwid_app}', // use your application namespace
 	  autoloadedflag: true, 
 	  autoheight: true
 	});
