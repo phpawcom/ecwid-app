@@ -56,7 +56,7 @@ if (isset($_POST["data"])) {
     if(is_array($order) && count($order) > 0){
         if(isset($order['cart']['currency']) && strtolower($order['cart']['currency']) == 'omr') {
             $config = [
-                'isTestMode' => (int)((boolean)$order['merchantAppSettings']['testMode'] ? 1 : 0), ## Set 1 to work with test mode
+                'isTestMode' => (int)((boolean)$order['merchantAppSettings']['testMode'] != 'false' ? 1 : 0), ## Set 1 to work with test mode
                 'public_key' => $order['merchantAppSettings']['publishable_key'],
                 'private_key' => $order['merchantAppSettings']['secret_key'],
                 's4d_license' => $order['merchantAppSettings']['s4d_license'],
@@ -80,6 +80,14 @@ if (isset($_POST["data"])) {
                     array_push($items, [
                         'name' => 'Other',
                         'unit_amount' => $sysTotal - $totalPrice,
+                        'quantity' => 1,
+                    ]);
+                }
+                if(isset($order['cart']['order']['discountCoupon']) && isset($order['cart']['order']['discountCoupon']['discount']) && !empty($order['cart']['order']['discountCoupon']['discount'])){
+                    $items = [];
+                    array_push($items, [
+                        'name' => 'Order '.$order['order']['id'],
+                        'unit_amount' => $sysTotal,
                         'quantity' => 1,
                     ]);
                 }
