@@ -56,7 +56,7 @@ if (isset($_POST["data"])) {
     if(is_array($order) && count($order) > 0){
         if(isset($order['cart']['currency']) && strtolower($order['cart']['currency']) == 'omr') {
             $config = [
-                'isTestMode' => (int)((boolean)$order['merchantAppSettings']['testMode'] != 'false' ? 1 : 0), ## Set 1 to work with test mode
+                'isTestMode' => (int)($order['merchantAppSettings']['testMode'] != 'false' ? 1 : 0), ## Set 1 to work with test mode
                 'public_key' => $order['merchantAppSettings']['publishable_key'],
                 'private_key' => $order['merchantAppSettings']['secret_key'],
                 's4d_license' => $order['merchantAppSettings']['s4d_license'],
