@@ -54,6 +54,7 @@ if (isset($_POST["data"])) {
     // The resulting JSON from payment request will be in $order variable
     $order = getEcwidPayload($client_secret, $ecwid_payload);
     if(is_array($order) && count($order) > 0){
+//        echo '<pre dir="ltr">' . print_r($order, true) . '</pre>';
         if(isset($order['cart']['currency']) && strtolower($order['cart']['currency']) == 'omr') {
             $config = [
                 'isTestMode' => (int)($order['merchantAppSettings']['testMode'] != 'false' ? 1 : 0), ## Set 1 to work with test mode
@@ -71,7 +72,7 @@ if (isset($_POST["data"])) {
                 $sysTotal = $order['cart']['order']['total'] * 1000;
                 if (is_array($order['cart']) && is_array($order['cart']['order']) && is_array($order['cart']['order']['items']) && count($order['cart']['order']['items']) > 0) {
                     foreach ($order['cart']['order']['items'] as $item) {
-                        $unitPrice = $item['productPrice'] * 1000;
+                        $unitPrice = ($item['productPrice'] > 0? $item['productPrice'] : $item['price']) * 1000;
                         array_push($items, ['name' => $item['name'], 'unit_amount' => $unitPrice, 'quantity' => $item['quantity']]);
                         $totalPrice += ($unitPrice * $item['quantity']);
                     }
@@ -110,6 +111,7 @@ if (isset($_POST["data"])) {
                         'customerEmail' => isset($order['cart']['order']['billingPerson']['name']) ? $order['cart']['order']['billingPerson']['name'] : '',
                     ]
                 ];
+//                echo '<pre dir="ltr">' . print_r($meta, true) . '</pre>'; exit;
                 $url = $thawani->generatePaymentUrl($meta);
                 if (!empty($url)) {
                     $_SESSION['thawani_payment_session'] = $thawani->payment_id;
