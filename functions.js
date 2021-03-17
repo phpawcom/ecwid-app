@@ -141,6 +141,7 @@ var initialConfig = {
 		installed: "yes",
 		publishable_key: 'HGvTMLDssJghr9tlN9gr4DVYt0qyBy',
 		secret_key: 'rRQ26GcsZzoEhbrP2HZvLYDbn9C9et',
+		money_exchange: '0',
 	},
 	public: {}
 };

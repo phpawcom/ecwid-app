@@ -55,7 +55,14 @@ if (isset($_POST["data"])) {
     $order = getEcwidPayload($client_secret, $ecwid_payload);
     if(is_array($order) && count($order) > 0){
 //        echo '<pre dir="ltr">' . print_r($order, true) . '</pre>';
+        $isOMR = false;
+        $exchangeRate = $order['merchantAppSettings']['money_exchange'];
+        $exchangeRate = (float) !empty($exchangeRate) && is_numeric($exchangeRate)? $exchangeRate : 0;
         if(isset($order['cart']['currency']) && strtolower($order['cart']['currency']) == 'omr') {
+            $isOMR = true;
+            $exchangeRate = 1;
+        }
+        if($isOMR || $exchangeRate > 0) {
             $config = [
                 'isTestMode' => (int)($order['merchantAppSettings']['testMode'] != 'false' ? 1 : 0), ## Set 1 to work with test mode
                 'public_key' => $order['merchantAppSettings']['publishable_key'],
@@ -69,10 +76,11 @@ if (isset($_POST["data"])) {
             if ($thawani->isActiveLicense) {
                 $items = [];
                 $totalPrice = 0;
-                $sysTotal = $order['cart']['order']['total'] * 1000;
+//                $sysTotal = $order['cart']['order']['total'] * 1000;
+                $sysTotal = ceil(currency_exchange($exchangeRate, $order['cart']['order']['total']) * 1000);
                 if (is_array($order['cart']) && is_array($order['cart']['order']) && is_array($order['cart']['order']['items']) && count($order['cart']['order']['items']) > 0) {
                     foreach ($order['cart']['order']['items'] as $item) {
-                        $unitPrice = ($item['productPrice'] > 0? $item['productPrice'] : $item['price']) * 1000;
+                        $unitPrice = ceil(currency_exchange($exchangeRate,$item['productPrice'] > 0? $item['productPrice'] : $item['price']) * 1000);
                         array_push($items, ['name' => $item['name'], 'unit_amount' => $unitPrice, 'quantity' => $item['quantity']]);
                         $totalPrice += ($unitPrice * $item['quantity']);
                     }
@@ -173,6 +181,8 @@ if (isset($_GET["callbackPayload"]) && isset($_GET["status"])) {
     echo 'Access forbidden!';
 
 }
-
+function currency_exchange($rate, $input){
+    return $rate > 0? $rate * $input : $input;
+}
 
 ?>
