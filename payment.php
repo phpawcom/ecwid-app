@@ -91,8 +91,18 @@ if (isset($_POST["data"])) {
                         'unit_amount' => $sysTotal - $totalPrice,
                         'quantity' => 1,
                     ]);
+                    $totalPrice += $sysTotal - $totalPrice;
                 }
+                $order['order']['id'] = empty($order['order']['id'])? $order['cart']['order']['id'] : $order['order']['id'];
                 if(isset($order['cart']['order']['discountCoupon']) && isset($order['cart']['order']['discountCoupon']['discount']) && !empty($order['cart']['order']['discountCoupon']['discount'])){
+                    $items = [];
+                    array_push($items, [
+                        'name' => 'Order '.$order['order']['id'],
+                        'unit_amount' => $sysTotal,
+                        'quantity' => 1,
+                    ]);
+                }
+                if($totalPrice !=  $sysTotal){
                     $items = [];
                     array_push($items, [
                         'name' => 'Order '.$order['order']['id'],
@@ -114,12 +124,12 @@ if (isset($_POST["data"])) {
                     'metadata' => [
                         'order_id' => $orderUrl['orderId'],
                         'storeId' => $order['storeId'],
-                        'customerName' => isset($order['cart']['order']['billingPerson']['name']) ? $order['cart']['order']['billingPerson']['name'] : '',
-                        'customerPhone' => isset($order['cart']['order']['email']) ? $order['cart']['order']['email'] : '',
-                        'customerEmail' => isset($order['cart']['order']['billingPerson']['name']) ? $order['cart']['order']['billingPerson']['name'] : '',
+                        'customerName' => isset($order['cart']['order']['shippingPerson']['name']) ? $order['cart']['order']['shippingPerson']['name'] : $order['cart']['order']['billingPerson']['name'],
+                        'customerPhone' => isset($order['cart']['order']['shippingPerson']['phone']) ? $order['cart']['order']['shippingPerson']['phone'] : $order['cart']['order']['billingPerson']['phone'],
+                        'customerEmail' => isset($order['cart']['order']['email']) ? $order['cart']['order']['email'] : '',
                     ]
                 ];
-//                echo '<pre dir="ltr">' . print_r($meta, true) . '</pre>'; exit;
+//                echo '<pre dir="ltr">' . print_r([$meta, $order], true) . '</pre>'; exit;
                 $url = $thawani->generatePaymentUrl($meta);
                 if (!empty($url)) {
                     $_SESSION['thawani_payment_session'] = $thawani->payment_id;
