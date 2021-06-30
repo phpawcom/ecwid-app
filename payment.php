@@ -130,6 +130,7 @@ if (isset($_POST["data"])) {
                     ]
                 ];
 //                echo '<pre dir="ltr">' . print_r([$meta, $order], true) . '</pre>'; exit;
+                $order['cart']['order']['refererUrl'] = rtrim($order['cart']['order']['refererUrl'], '/').'/';
                 $url = $thawani->generatePaymentUrl($meta);
                 if (!empty($url)) {
                     $_SESSION['thawani_payment_session'] = $thawani->payment_id;
@@ -142,6 +143,7 @@ if (isset($_POST["data"])) {
         }else{
             $url = $order['cart']['order']['refererUrl'] . 'checkout/payment?errorMsg=' . htmlspecialchars('Thawani gateway only support Omani Rial');
         }
+        $url = str_replace('wix:', '', $url);
         header('location:'.$url);
         echo "<script>window.location = '$url';</script>";
         exit;
