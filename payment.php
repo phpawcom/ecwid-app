@@ -54,7 +54,7 @@ if (isset($_POST["data"])) {
     // The resulting JSON from payment request will be in $order variable
     $order = getEcwidPayload($client_secret, $ecwid_payload);
     if(is_array($order) && count($order) > 0){
-//        echo '<pre dir="ltr">' . print_r($order, true) . '</pre>';
+        $ecwidReturnUrl = urlencode($order['returnUrl']??'');
         $isOMR = false;
         $exchangeRate = $order['merchantAppSettings']['money_exchange'];
         $exchangeRate = (float) !empty($exchangeRate) && is_numeric($exchangeRate)? $exchangeRate : 0;
@@ -115,7 +115,7 @@ if (isset($_POST["data"])) {
                 $ciphertext_raw = openssl_encrypt($order['token'], $cipher, $client_secret, 0, $iv);
                 $callbackPayload = base64_encode($ciphertext_raw);
                 $configPayload = base64_encode(openssl_encrypt(json_encode($config), $cipher, $client_secret, 0, $iv));
-                $callbackUrl = "https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . "?storeId=" . $order['storeId'] . "&orderNumber=" . $order['cart']['order']['orderNumber'] . "&callbackPayload=" . $callbackPayload . '&config=' . $configPayload;
+                $callbackUrl = "https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . "?storeId=" . $order['storeId'] . "&orderNumber=" . $order['cart']['order']['orderNumber'] . "&callbackPayload=" . $callbackPayload . '&config=' . $configPayload.'&callbackUrl=' . $ecwidReturnUrl;
                 $meta = [
                     'client_reference_id' => $thawaniInvoiceId,
                     'products' => $items,
@@ -129,7 +129,6 @@ if (isset($_POST["data"])) {
                         'customerEmail' => isset($order['cart']['order']['email']) ? $order['cart']['order']['email'] : '',
                     ]
                 ];
-//                echo '<pre dir="ltr">' . print_r([$meta, $order], true) . '</pre>'; exit;
                 $order['cart']['order']['refererUrl'] = rtrim($order['cart']['order']['refererUrl'], '/').'/';
                 $url = $thawani->generatePaymentUrl($meta);
                 if (!empty($url)) {
@@ -164,6 +163,10 @@ if (isset($_GET["callbackPayload"]) && isset($_GET["status"])) {
         $config = json_decode($config, true);
     }
     if(is_array($config) && !empty($token)){
+//        echo '<pre dir="ltr">' . print_r(compact('config', '_GET', 'token', 'c'), true) . '</pre>'; exit;
+        if(!empty($_GET['callbackUrl'])){
+            $returnUrl = urldecode($_GET['callbackUrl']);
+        }
         $thawani = new \s4d\payment\thawani($config, $AppConfig['s4d_secret']);
         $thawani->checkPaymentStatus($_SESSION['thawani_payment_session']);
         $json = json_encode(array(
