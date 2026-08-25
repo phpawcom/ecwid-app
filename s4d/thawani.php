@@ -4,41 +4,44 @@ if (!class_exists('s4d\payment\thawani', false)) {
     class thawani {
         const production = 'https://checkout.thawani.om/api/v1/';
         const uat = 'https://uatcheckout.thawani.om/api/v1/';
-        public $config = [];
+        public array $config = [];
         public $rsa = [];
-        public $connectTimeOut = 30;
-        public $payment_id = '';
-        public $payment_status = 0;
-        public $debug = false;
+        public int $connectTimeOut = 30;
+        public string $payment_id = '';
+        public int $payment_status = 0;
+        public string $intentId;
+        public bool $debug = false;
         public $license = '';
         public $s4d_license = '';
         public $licensePath = __DIR__ . '/license.key';
         public $license_secret_key = '9Xb*BRt3vemqXGdF';
-        public $isActiveLicense = false;
+        public bool $isActiveLicense = false;
         public $errorFatal;
         public $errorWarning;
-        public $responseData = [];
-        public $remoteLicenseOnly = false;
+        public array $responseData = [];
+        public bool $remoteLicenseOnly = false;
+        public $headerResponses;
 
         /**
          * thawani constructor.
          * @param array $config
          */
-        public function __construct(array $config, $license_secret_key, $errorFatal = '')
+        public function __construct(array $config, $license_secret_key, $errorFatal = '', $licenseKeyRead = null, $licenseKeyWrite = null)
         {
-            date_default_timezone_set('Asia/Muscat'); ## this is important as Thawani using local time to check validity of invoice
+//            date_default_timezone_set('Asia/Muscat'); ## this is important as Thawani using local time to check validity of invoice
             $this->config = array_merge([
                 'isTestMode' => 1, ## Set 1 to work with test mode
                 'public_key' => '',
                 'private_key' => '',
                 's4d_license' => '',
+                'webhookSecret' => '',
                 'remoteLicenseOnly' => false,
             ], $config);
             $this->remoteLicenseOnly = $this->config['remoteLicenseOnly'];
             $this->license_secret_key = $license_secret_key;
             $this->errorFatal = $errorFatal;
             foreach ($this->config as $k => $v) {
-                if (in_array($k, ['isTestMode', 'remoteLicenseOnly'])) continue;
+                if (in_array($k, ['isTestMode', 'remoteLicenseOnly', 'webhookSecret'])) continue;
                 if (empty($v)) {
                     if (is_callable($this->errorFatal)) {
                         call_user_func_array($this->errorFatal, ['Thawani ' . $k . ' is not set']);
@@ -48,7 +51,7 @@ if (!class_exists('s4d\payment\thawani', false)) {
                 }
             }
             $this->s4d_license = $config['s4d_license'];
-            $this->handleLicense();
+            $this->handleLicense($licenseKeyRead, $licenseKeyWrite);
         }
 
         /**
@@ -62,11 +65,21 @@ if (!class_exists('s4d\payment\thawani', false)) {
         /**
          * @return string
          */
-        public function currentPageUrl()
-        {
-            $page = urldecode(($this->is_ssl() ? 'https://' : 'http://') . $_SERVER['SERVER_NAME'] . '' . $_SERVER['REQUEST_URI']);
-            return $page;
+        public function currentPageUrl(){
+            return urldecode(($this->is_ssl() ? 'https://' : 'http://') . $_SERVER['SERVER_NAME'] . '' . $_SERVER['REQUEST_URI']);
         }
+
+        /**
+         * @return false|string
+         */
+        public function currentPagePlain(){
+            return substr($this->currentPageUrl(), 0, strpos($this->currentPageUrl(), '?'));
+        }
+
+        /**
+         * @param $parameter
+         * @return string
+         */
         public function getUrl($parameter){
             return ($this->config['isTestMode'] == 1? self::uat : self::production).$parameter;
         }
@@ -110,7 +123,7 @@ if (!class_exists('s4d\payment\thawani', false)) {
             ];
             if ($method == 'GET') {
                 if ($fieldsCount > 0) {
-                    $settings[CURLOPT_URL] = $parameters['url'] . http_build_query($parameters['fields']);
+                    $settings[CURLOPT_URL] = $parameters['url'].(strpos($parameters['url'], '?') !== false? '&' : '?'). http_build_query($parameters['fields']);
                 }
             } else {
                 $settings[CURLOPT_POST] = $fieldsCount;
@@ -179,7 +192,7 @@ if (!class_exists('s4d\payment\thawani', false)) {
             if (isset($server['response']) && !empty($server['response'])) {
                 $server['response'] = json_decode($server['response'], true);
                 $this->responseData = $server['response'];
-                if (is_array($server['response']) && count($server['response']) > 0 && $server['response']['success'] == 1 && is_array($server['response']['data']) && count(($server['response']['data']))) {
+                if (is_array($server['response']) && count($server['response']) > 0 && isset($server['response']['success']) && $server['response']['success'] == 1 && is_array($server['response']['data']) && count(($server['response']['data']))) {
                     if (isset($server['response']['data']['session_id']) && !empty($server['response']['data']['session_id'])) {
                         $this->payment_id = $server['response']['data']['session_id'];
                         $output = $this->config['isTestMode'] == 1 ? 'https://uatcheckout.thawani.om/pay/' . $this->payment_id . '?key=' . $this->config['public_key'] : 'https://checkout.thawani.om/pay/' . $this->payment_id . '?key=' . $this->config['public_key'];
@@ -209,7 +222,7 @@ if (!class_exists('s4d\payment\thawani', false)) {
             ], 'GET');
             if (isset($server['response']) && !empty($server['response'])) {
                 $server['response'] = json_decode($server['response'], true);
-                $server['response']['data'] = isset($server['response']['data'][0]) ? $server['response']['data'][0] : $server['response']['data'];
+                $server['response']['data'] = isset($server['response']['data'][0]) ? $server['response']['data'][0] : $server['response']['data']??[];
                 if (is_array($server['response']) && count($server['response']) > 0 && $server['response']['success'] == 1 && is_array($server['response']['data']) && count(($server['response']['data']))) {
                     if (trim(strtolower($server['response']['data']['payment_status'])) == 'paid') {
                         $this->payment_status = 1;
@@ -247,7 +260,7 @@ if (!class_exists('s4d\payment\thawani', false)) {
             if (isset($server['response']) && !empty($server['response'])) {
                 $server['response'] = json_decode($server['response'], true);
                 if ($method != 'delete') {
-                    $server['response']['data'] = isset($server['response']['data'][0]) ? $server['response']['data'][0] : $server['response']['data'];
+                    $server['response']['data'] = isset($server['response']['data'][0]) ? $server['response']['data'][0] : $server['response']['data']??[];
                 }
                 if (is_array($server['response']) && count($server['response']) > 0) {
                     if ($method == 'delete' && $server['response']['success'] == 1) {
@@ -296,15 +309,35 @@ if (!class_exists('s4d\payment\thawani', false)) {
         /**
          * @param $customer_id
          */
-        public function getPaymentMethods($customer_id){ ## TODO: test this once Thawani activate it
+        public function getPaymentMethods($customer_id){
             $server = $this->post([
                 'url' => $this->getUrl('payment_methods'),
-                'fields' => ['client_customer_id' => $customer_id],
+                'fields' => ['customerId' => $customer_id],
                 'headers' => [
                     'Thawani-Api-Key' => $this->config['private_key']
-                ]
+                ],
             ], 'GET');
-            return $server;
+            if($server['is_success'] == 1){
+                $server['response'] = !empty($server['response'])? json_decode($server['response'], true) : [];
+            }
+            return $server['response'];
+        }
+
+        /**
+         * @param $token
+         * @return array|mixed
+         */
+        public function deletePaymentMethods($token){
+            $server = $this->post([
+                'url' => $this->getUrl('payment_methods').'/'.$token,
+                'headers' => [
+                    'Thawani-Api-Key' => $this->config['private_key']
+                ],
+            ], 'DELETE');
+            if($server['is_success'] == 1){
+                $server['response'] = !empty($server['response'])? json_decode($server['response'], true) : [];
+            }
+            return $server['response'];
         }
 
         /**
@@ -347,22 +380,99 @@ if (!class_exists('s4d\payment\thawani', false)) {
         }
 
         /**
+         * @param array $input
+         * @return array|mixed
+         */
+        public function createIntent(array $input){
+            $input = array_merge([
+                'client_reference_id' => '',
+                'return_url' => '',
+                'metadata' => '',
+                'payment_method_id' => '',
+                'amount' => ''
+            ], $input);
+            $server = $this->post([
+                'url' => $this->getUrl('payment_intents'),
+                'fields' => $input,
+                'headers' => [
+                    'Thawani-Api-Key' => $this->config['private_key']
+                ]
+            ], 'POST');
+            if($server['is_success'] == 1){
+                $server['response'] = !empty($server['response'])? json_decode($server['response'], true) : [];
+                $server['confirm'] = '';
+                if(($server['response']['code']) == 2001 && isset($server['response']['data']['id']) && !empty($server['response']['data']['id'])){
+                    $this->intentId = $server['response']['data']['id'];
+                    $server['response']['confirm'] = $this->getUrl('payment_intents').$server['response']['data']['id'].'/confirm';
+                }
+            }
+            return $server['response'];
+        }
+
+        /**
+         * @param $intentId
+         * @return array|mixed
+         */
+        public function chargeCard($intentId = ''){
+            $intentId = empty($intentId)? $this->intentId : $intentId;
+            $server = $this->post([
+                'url' => $this->getUrl('payment_intents').'/'.$intentId.'/confirm',
+                'headers' => [
+                    'Thawani-Api-Key' => $this->config['private_key']
+                ]
+            ], 'POST');
+            if($server['is_success'] == 1){
+                $server['response'] = !empty($server['response'])? json_decode($server['response'], true) : [];
+            }
+            return $server['response'];
+        }
+        public function getIntent($intentId = ''){
+            $intentId = empty($intentId)? $this->intentId : $intentId;
+            $server = $this->post([
+                'url' => $this->getUrl('payment_intents').'/'.$intentId,
+                'headers' => [
+                    'Thawani-Api-Key' => $this->config['private_key']
+                ]
+            ], 'GET');
+            if($server['is_success'] == 1){
+                $server['response'] = !empty($server['response'])? json_decode($server['response'], true) : [];
+                if(isset($server['response']) && isset($server['response']['data']['status']) && strtolower($server['response']['data']['status']) == 'succeeded'){
+                    $this->payment_status = 1;
+                }
+            }
+            return $server['response'];
+        }
+        /**
          * @param int $capture if set to 1, it will save Thawani $_POST in a file in /logs/{PAYMENT_ID}.json
          * @return array
          */
         public function handleCallback($capture = 0)
         {
             $input = ['body' => file_get_contents("php://input"), 'headers' => getallheaders()];
-            $output = ['is_success' => (int)0, 'receipt' => (int)0, 'session' => [], 'raw' => []];
+            $output = ['is_success' => 0, 'receipt' => 0, 'session' => [], 'raw' => []];
             $input['body'] = !empty($input['body']) ? json_decode($input['body'], true) : [];
             if (!is_array($input['body'])) {
                 $input['body'] = [];
             }
-            $output['raw'] = $input['body'];
-            if (isset($input['body']['payment_status']) && isset($input['body']['session_id']) && strtolower($input['body']['payment_status']) == 'paid') {
-                $output['session'] = $this->checkPaymentStatus($input['body']['session_id']);
-                $output['is_success'] = $this->payment_status;
-                $output['receipt'] = isset($input['body']['receipt']) ? $input['body']['receipt'] : (int)0;
+            $output['raw'] = $input['body']['data']??[];
+            $output['raw']['event_type'] = $input['body']['event_type'] ?? '';
+            $output['headers'] = $input['headers']??[];
+            if(count($output['headers']) > 0){
+                $output['headers'] = array_combine(
+                    array_map(function($k){ return strtolower($k); }, array_keys($output['headers'])),
+                    $output['headers']
+                );
+            }
+            if(strtolower($output['raw']['event_type']) == 'checkout.completed' && strtolower($output['raw']['payment_status']??'') == 'paid') {
+                if (isset($this->config['webhookSecret']) && !empty($this->config['webhookSecret']) && $output['headers']['thawani-signature'] == hash_hmac('sha256', json_encode($input['body'])."-".$output['headers']['thawani-timestamp'], $this->config['webhookSecret'])) {
+                    $output['is_success'] = 1;
+                    $output['receipt'] = (int) $output['raw']['invoice']??0;
+                    $this->payment_status = 1;
+                }elseif(isset($output['raw']['session_id'])){
+                    $output['session'] = $this->checkPaymentStatus($output['raw']['session_id']);
+                    $output['is_success'] = $this->payment_status;
+                    $output['receipt'] = (int) $output['raw']['invoice']??0;
+                }
             }
             if ($capture == 1) {
                 $this->captureCallback($input);
@@ -416,10 +526,9 @@ if (!class_exists('s4d\payment\thawani', false)) {
             endif;
         }
 
-        public function check_license($licensekey, $localkey = '')
-        {
+        public function check_license($licensekey, $localkey = ''){
             // Enter the url to your WHMCS installation here
-            $whmcsurl = 'https://www.s4d.om/hosting/';
+            $whmcsurl = 'http://licensing-server.s4d.om/';
             // Must match what is specified in the MD5 Hash Verification field
             // of the licensing product that will be used with this check.
             $licensing_secret_key = $this->license_secret_key;
@@ -455,7 +564,7 @@ if (!class_exists('s4d\payment\thawani', false)) {
                         if ($originalcheckdate > $localexpiry) {
                             $localkeyvalid = true;
                             $results = $localkeyresults;
-                            $results['validdomain'] = !isset($results['validdomain']) ? '' : $results['validdomain'];
+                            /*$results['validdomain'] = !isset($results['validdomain']) ? '' : $results['validdomain'];
                             $validdomains = explode(',', $results['validdomain']);
                             if (!in_array($_SERVER['SERVER_NAME'], $validdomains)) {
                                 $localkeyvalid = false;
@@ -468,7 +577,7 @@ if (!class_exists('s4d\payment\thawani', false)) {
                                 $localkeyvalid = false;
                                 $localkeyresults['status'] = "Invalid";
                                 $results = array();
-                            }
+                            }*/
                             $results['validdirectory'] = !isset($results['validdirectory']) ? '' : $results['validdirectory'];
                             $validdirs = explode(',', $results['validdirectory']);
                             if (!in_array($dirpath, $validdirs)) {
@@ -571,6 +680,7 @@ if (!class_exists('s4d\payment\thawani', false)) {
                 }
                 $results['remotecheck'] = true;
             }
+            $results['addons'] = $this->addonParser($results['addons'] ?? '');
             unset($postfields, $data, $matches, $whmcsurl, $licensing_secret_key, $checkdate, $usersip, $localkeydays, $allowcheckfaildays, $md5hash);
             return $results;
         }
@@ -598,12 +708,12 @@ if (!class_exists('s4d\payment\thawani', false)) {
             return $output;
         }
 
-        public function handleLicense()
+        public function handleLicense($licenseKeyRead = null, $licenseKeyWrite = null)
         {
             if ($this->remoteLicenseOnly) {
                 $this->license = $this->check_license($this->s4d_license);
             } else {
-                $this->license = $this->check_license($this->s4d_license, $this->keyFile());
+                $this->license = $this->check_license($this->s4d_license, is_callable($licenseKeyRead)? call_user_func($licenseKeyRead) : $this->keyFile());
             }
             if ($this->license['status'] != 'Active') {
                 $message = 'Cannot verify class license, please contact s4d.om';
@@ -614,7 +724,11 @@ if (!class_exists('s4d\payment\thawani', false)) {
                 }
             } else {
                 if (isset($this->license['localkey']) && !empty($this->license['localkey']) && !$this->remoteLicenseOnly) {
-                    $this->keyFile($this->license['localkey'], 1);
+                    if(is_callable($licenseKeyWrite)){
+                        call_user_func($licenseKeyWrite, $this->license['localkey']);
+                    }else {
+                        $this->keyFile($this->license['localkey'], 1);
+                    }
                 }
                 $this->isActiveLicense = true;
             }
@@ -634,6 +748,39 @@ if (!class_exists('s4d\payment\thawani', false)) {
             } else {
                 if ($return != 0) return $output; else echo $output;
             }
+        }
+        public function addonParser($input){
+            $output = [];
+            $list = explode('|', $input);
+            if(is_array($list) && count($list) > 0){
+                foreach($list as $input){
+                    $input = explode(';', $input);
+                    $input = !is_array($input)? [] : $input;
+                    $input[2] = $input[2]?? 'status=failed';
+                    if(strrpos($input[2], 'status=') !== false) {
+                        if (count($input) > 0) {
+                            $key = '';
+                            foreach ($input as $item) {
+                                $item = explode('=', $item);
+
+                                if ($item[0] == 'name') {
+                                    $key = stripos($item[1], 'Credit') !== false ? 'credit_cards' : $item[1];
+                                }
+                                if(!empty($key)) {
+                                    $output[$key]['status'] = substr($input[2], strlen('status='));
+                                    if ($item[0] == 'nextduedate' && ($item[1] == '0000-00-00' || new \DateTime() < new \DateTime($item[1] . ' 23:59:59'))) {
+                                        $output[$key][$item[0]] = $item[1];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return $output;
+        }
+        public function isValidLicense(){
+            return !is_array($this->license['addons']) || is_array($this->license['addons']) && (count($this->license['addons']) == 0 || in_array('credit_cards', array_keys($this->license['addons'])) && strtolower($this->license['addons']['credit_cards']['status']??[]) == 'active');
         }
     }
 }

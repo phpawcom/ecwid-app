@@ -7,7 +7,14 @@ $config = [
     'private_key' => 'rRQ26GcsZzoEhbrP2HZvLYDbn9C9et',
     's4d_license' => 'GCTH-bb08f85f2efb79fd'
 ];
-include('s4d-production-keys.php'); ## Uncomment this file to test the class in production environment until you get your productions keys. NOTE: MAKE SURE TO TEST IN SMALL AMOUNTS LIKE 0.1 OMR (100 BISA)
+// echo '<iframe src="https://uatcheckout.thawani.om/pay/checkout_v7xB5rMnI4bDYISJUyiTcbPGcq97i2XzZYLrxypYvtymiKZuZZ?key=HGvTMLDssJghr9tlN9gr4DVYt0qyBy" height="600" width="100%"></iframe>'; exit;
+$_config = [
+    'isTestMode' => 0, ## set it to 0 to use the class in production mode
+    'public_key' => 'Uqb7OeHK7H7PFPeOf30XXtMHDHJc3x',
+    'private_key' => '4thUqC3gCe8XtVABmJ88YbuhVv6Tup',
+    's4d_license' => 'GCTH-bb08f85f2efb79fd'
+];
+//include('s4d-production-keys.php'); ## Uncomment this file to test the class in production environment until you get your productions keys. NOTE: MAKE SURE TO TEST IN SMALL AMOUNTS LIKE 0.1 OMR (100 BISA)
 $thawani = new \s4d\payment\thawani($config, '9Xb*BRt3vemqXGdF');
 //$thawani->errorWarning = function($input){ echo '<b>'.$input.'</b>'; };
 $thawani->debug = true;
@@ -21,7 +28,8 @@ switch ($_REQUEST['op']){
                 ['name' => 'test test test test test test test test test test test test ', 'unit_amount' => 100, 'quantity' => 1],
 //                ['name' => 'test', 'unit_amount' => 100, 'quantity' => 1],
             ],
-            'customer_id' => 'cus_j74GyVLVDGMGccum',
+//            'customer_id' => 'cus_j74GyVLVDGMGccum', ## Production
+             'customer_id' => 'cus_pBefC5rWK318OFDW', ## UAT
             'success_url' => $thawani->currentPageUrl().'?op=checkPayment',
             'cancel_url' => $thawani->currentPageUrl().'?op=checkPayment',
             'metadata' => [
@@ -38,6 +46,7 @@ switch ($_REQUEST['op']){
         }
         break;
     case 'callback': ## handle Thawani callback, you need to update order status in your database or file system
+        $thawani->config['webhookSecret'] = ''; ## Set webhook secret here
         $result = $thawani->handleCallback(1);
         /*
          * $results contain some information, it will be like:
@@ -49,8 +58,10 @@ switch ($_REQUEST['op']){
          */
         if($thawani->payment_status == 1){
             ## successful payment
+            echo 'Success Payment';
         }else{
             ## failed payment
+            echo 'Failed Payment';
         }
         break;
     case 'checkPayment':
@@ -75,7 +86,11 @@ switch ($_REQUEST['op']){
         $thawani->iprint_r($customer);
         break;
     case 'getPaymentMethods':
-        $methods = $thawani->getPaymentMethods('cus_j74GyVLVDGMGccum');
+        $methods = $thawani->getPaymentMethods('cus_pBefC5rWK318OFDW');
+        $thawani->iprint_r($methods);
+        break;
+    case 'deletePaymentMethods':
+        $methods = $thawani->deletePaymentMethods('card_WQUKaVVdXIEMOgm9gUMrCWogNf');
         $thawani->iprint_r($methods);
         break;
     case 'getPaymentDetails':
@@ -88,6 +103,29 @@ switch ($_REQUEST['op']){
 //            'customer_name' => 'test',
             'order_id' => 1001
         ]);
+        $thawani->iprint_r($result);
+        break;
+    case 'createIntent':
+        $result = $thawani->createIntent([
+            'client_reference_id' => rand(1000,9999),
+            'return_url' => $thawani->currentPagePlain().'?op=getIntent',
+            'payment_method_id' => 'card_WQUKaVVdXIEMOgm9gUMrCWogNf',
+            'amount' => 100
+        ]);
+        if(!empty($thawani->intentId)) {
+            $_SESSION['intentId'] = $thawani->intentId;
+            echo '<h3>Charge Amount:</h3>';
+            $result = $thawani->chargeCard($thawani->intentId);
+        }
+        $thawani->iprint_r($result);
+        break;
+    case 'getIntent':
+        $result = $thawani->getIntent($_SESSION['intentId']);
+        if($thawani->payment_status == 1){
+            ## successful payment
+        }else{
+            ## failed payment
+        }
         $thawani->iprint_r($result);
         break;
     case 'home':
