@@ -174,11 +174,11 @@ if (isset($_GET["callbackPayload"]) && isset($_GET["status"])) {
             "externalTransactionId" => "transaction_".$orderNumber
         ));
         unset($_SESSION['thawani_payment_session']);
-        $url = "https://app.ecwid.com/api/v3/$storeId/orders/transaction_$orderNumber?token=$token";
+        $url = "https://app.ecwid.com/api/v3/$storeId/orders/transaction_$orderNumber";
         // Send request to update order
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json', 'Content-Length: ' . strlen($json)));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Authorization: Bearer ' . $token, 'Content-Type: application/json', 'Content-Length: ' . strlen($json)));
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
         curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
