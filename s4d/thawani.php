@@ -19,6 +19,9 @@ if (!class_exists('s4d\payment\thawani', false)) {
         public $errorFatal;
         public $errorWarning;
         public array $responseData = [];
+        public int $lastHttpCode = 0;
+        public string $lastCurlError = '';
+        public string $lastRawResponse = '';
         public bool $remoteLicenseOnly = false;
         public $headerResponses;
 
@@ -90,7 +93,7 @@ if (!class_exists('s4d\payment\thawani', false)) {
          */
         public function post(array $parameters, $method = 'POST')
         {
-            $output = ['is_success' => 0, 'response' => ''];
+            $output = ['is_success' => 0, 'response' => '', 'http_code' => 0, 'error' => ''];
             $parameters = array_merge([
                 'url' => '',
                 'settings' => [],
@@ -139,6 +142,7 @@ if (!class_exists('s4d\payment\thawani', false)) {
             curl_setopt_array($connection, $settings);
             $content = curl_exec($connection);
             $err = curl_error($connection);
+            $httpCode = (int) curl_getinfo($connection, CURLINFO_HTTP_CODE);
             if ($parameters['printHeader']) {
                 preg_match_all('/^Set-Cookie:\s*([^;]*)/mi', $content, $matches);
                 $this->headerCookies = array();
@@ -151,6 +155,11 @@ if (!class_exists('s4d\payment\thawani', false)) {
                 $content = substr($content, $header_len);
             }
             curl_close($connection);
+            $output['http_code'] = $httpCode;
+            $output['error'] = $err;
+            $this->lastHttpCode = $httpCode;
+            $this->lastCurlError = (string) $err;
+            $this->lastRawResponse = is_string($content) ? $content : '';
             if (!$err) {
                 $output['is_success'] = 1;
                 $output['response'] = $content;
@@ -191,7 +200,7 @@ if (!class_exists('s4d\payment\thawani', false)) {
             ], 'POST');
             if (isset($server['response']) && !empty($server['response'])) {
                 $server['response'] = json_decode($server['response'], true);
-                $this->responseData = $server['response'];
+                $this->responseData = is_array($server['response']) ? $server['response'] : [];
                 if (is_array($server['response']) && count($server['response']) > 0 && isset($server['response']['success']) && $server['response']['success'] == 1 && is_array($server['response']['data']) && count(($server['response']['data']))) {
                     if (isset($server['response']['data']['session_id']) && !empty($server['response']['data']['session_id'])) {
                         $this->payment_id = $server['response']['data']['session_id'];
@@ -779,6 +788,58 @@ if (!class_exists('s4d\payment\thawani', false)) {
             }
             return $output;
         }
+        /**
+         * Builds a human readable message out of the last API call,
+         * so the caller can tell the merchant what actually went wrong.
+         * @param string $fallback
+         * @return string
+         */
+        public function lastErrorMessage($fallback = 'Unknown error')
+        {
+            if (!empty($this->lastCurlError)) {
+                return 'Could not reach Thawani: ' . $this->lastCurlError;
+            }
+            $message = '';
+            $data = $this->responseData;
+            if (is_array($data) && count($data) > 0) {
+                foreach (['detail', 'description', 'message', 'error'] as $key) {
+                    if (!empty($data[$key]) && is_string($data[$key])) {
+                        $message = $data[$key];
+                        break;
+                    }
+                }
+                if ($message === '' && isset($data['data'])) {
+                    $lines = [];
+                    foreach ((array) $data['data'] as $field => $errors) {
+                        foreach ((array) $errors as $error) {
+                            if (is_string($error)) $lines[] = is_string($field) ? $field . ': ' . $error : $error;
+                        }
+                    }
+                    $message = implode("\n", $lines);
+                }
+                if ($message === '') $message = json_encode($data, JSON_UNESCAPED_UNICODE);
+            } elseif (!empty($this->lastRawResponse)) {
+                $message = mb_substr(trim(strip_tags($this->lastRawResponse)), 0, 300, 'utf-8');
+            }
+            if ($message === '') {
+                switch ($this->lastHttpCode) {
+                    case 401:
+                    case 403:
+                        $message = 'Thawani rejected the keys. Please check the Secret Key and whether test mode matches the keys you are using.';
+                        break;
+                    case 0:
+                        $message = 'No response from Thawani.';
+                        break;
+                    default:
+                        $message = $fallback;
+                }
+            }
+            if ($this->lastHttpCode > 0 && $this->lastHttpCode != 200) {
+                $message .= ' (HTTP ' . $this->lastHttpCode . ')';
+            }
+            return $message;
+        }
+
         public function isValidLicense(){
             return !is_array($this->license['addons']) || is_array($this->license['addons']) && (count($this->license['addons']) == 0 || in_array('credit_cards', array_keys($this->license['addons'])) && strtolower($this->license['addons']['credit_cards']['status']??[]) == 'active');
         }

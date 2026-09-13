@@ -44,8 +44,9 @@ switch ($_REQUEST['op']){
         ]);
         if(!empty($url)){
             $response['status'] = 1;
+            $response['message'] = 'Your Thawani API keys are working'.($thawani->config['isTestMode'] == 1? ' (test mode)' : '').'.';
         }else{
-            $response['message'] = isset($thawani->responseData['detail'])? $thawani->responseData['detail'] : json_encode($thawani->responseData);
+            $response['message'] = $thawani->lastErrorMessage('Thawani did not return a checkout session for these keys.');
         }
         break;
 }

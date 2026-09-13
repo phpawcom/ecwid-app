@@ -238,6 +238,13 @@ fields_object = function(){
 	});
 	return data;
 }
+// Escapes a server message and falls back to a readable text when it is empty
+alert_message = function(message, fallback){
+	"use strict";
+	message = $.trim(message === undefined || message === null? '' : String(message));
+	if(message === '' || message === '[]' || message === '{}') message = fallback;
+	return $('<div/>').text(message).html().replace(/\n/g, '<br>');
+}
 $(document).on('keyup', 'input[data-name=s4d_license]', function(){
 	"use strict";
 	var holder = $(this);
@@ -254,9 +261,10 @@ $(document).on('keyup', 'input[data-name=s4d_license]', function(){
 				holder.parent().find('.field-state--close').show();
 				$.alert({
 					title: 'License Error',
+					type: 'red',
 					boxWidth: '500px',
 					useBootstrap: false,
-					content: response.message,
+					content: alert_message(response.message, 'This S4D license could not be verified.'),
 				});
 			}
 		}).always(function() {
@@ -278,16 +286,32 @@ $(document).on('click', 'button[name=verify_thawani]', function(){
 		if(status === 1){
 			holder.parent().find('.field-state--success').show();
 			holder.parent().find('.field-state--close').hide();
+			$.alert({
+				title: 'Thawani API',
+				type: 'green',
+				boxWidth: '500px',
+				useBootstrap: false,
+				content: alert_message(response.message, 'Your Thawani API keys are working.'),
+			});
 		}else{
 			$.alert({
 				title: 'Thawani API',
+				type: 'red',
 				boxWidth: '500px',
 				useBootstrap: false,
-				content: response.message,
+				content: alert_message(response.message, 'Could not verify the Thawani API keys.'),
 			});
 			holder.parent().find('.field-state--success').hide();
 			holder.parent().find('.field-state--close').show();
 		}
+	}).fail(function(xhr) {
+		$.alert({
+			title: 'Thawani API',
+			type: 'red',
+			boxWidth: '500px',
+			useBootstrap: false,
+			content: alert_message('', 'Could not reach the app server (HTTP ' + xhr.status + ').'),
+		});
 	}).always(function() {
 		$('body').loading('stop');
 	});
