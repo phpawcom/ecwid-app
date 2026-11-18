@@ -2,6 +2,7 @@
 
 namespace App\Licensing;
 
+use App\Logging\GatewayLogger;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Http\Client\ConnectionException;
@@ -19,7 +20,10 @@ use Illuminate\Support\Str;
  */
 class WhmcsLicenseChecker
 {
-    public function __construct(private readonly Cache $cache) {}
+    public function __construct(
+        private readonly Cache $cache,
+        private readonly GatewayLogger $logger,
+    ) {}
 
     public function check(string $licenseKey, bool $forceRemote = false): LicenseResult
     {
@@ -76,24 +80,31 @@ class WhmcsLicenseChecker
     private function remoteCheck(string $licenseKey): ?array
     {
         $checkToken = time().md5(Str::random(32).$licenseKey);
+        $url = config('licensing.server_url').config('licensing.verify_path');
+        $fields = [
+            'licensekey' => $licenseKey,
+            'domain' => $this->domain(),
+            'ip' => $this->ip(),
+            'dir' => $this->directory(),
+            'check_token' => $checkToken,
+        ];
+        $started = hrtime(true);
 
         try {
-            $response = Http::asForm()
-                ->timeout(config('licensing.timeout'))
-                ->post(config('licensing.server_url').config('licensing.verify_path'), [
-                    'licensekey' => $licenseKey,
-                    'domain' => $this->domain(),
-                    'ip' => $this->ip(),
-                    'dir' => $this->directory(),
-                    'check_token' => $checkToken,
-                ]);
+            $response = Http::asForm()->timeout(config('licensing.timeout'))->post($url, $fields);
         } catch (ConnectionException $e) {
+            $this->logger->record('whmcs', 'POST', $url, [], http_build_query($fields), null, null, false, $e->getMessage(), self::elapsed($started), 'license.verify');
             Log::warning('License server unreachable', ['error' => $e->getMessage()]);
 
             return null;
         }
 
+        $logResult = function (bool $success, ?string $error) use ($url, $fields, $response, $started) {
+            $this->logger->record('whmcs', 'POST', $url, [], http_build_query($fields), $response->status(), $response->body(), $success, $error, self::elapsed($started), 'license.verify');
+        };
+
         if (! $response->successful()) {
+            $logResult(false, 'HTTP '.$response->status());
             Log::warning('License server returned an error', ['status' => $response->status()]);
 
             return null;
@@ -104,13 +115,20 @@ class WhmcsLicenseChecker
         $data = array_combine($matches[1], $matches[2]) ?: [];
 
         if ($data === []) {
+            $logResult(false, 'Unexpected response');
+
             return ['status' => 'Invalid', 'description' => 'Unexpected response from the license server.'];
         }
 
         $secret = (string) config('licensing.secret');
         if (! empty($data['md5hash']) && ! hash_equals(md5($secret.$checkToken), $data['md5hash'])) {
+            $logResult(false, 'md5hash verification failed');
+
             return ['status' => 'Invalid', 'description' => 'License server response failed verification.'];
         }
+
+        // "success" here means WHMCS answered properly; the license itself may still be Suspended etc.
+        $logResult(true, strcasecmp($data['status'] ?? '', 'Active') === 0 ? null : 'License '.($data['status'] ?? 'Invalid'));
 
         return $data;
     }
@@ -128,5 +146,10 @@ class WhmcsLicenseChecker
     private function directory(): string
     {
         return config('licensing.directory') ?: base_path();
+    }
+
+    private static function elapsed(int $started): int
+    {
+        return (int) round((hrtime(true) - $started) / 1e6);
     }
 }

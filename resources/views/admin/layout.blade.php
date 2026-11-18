@@ -14,6 +14,7 @@
             <span class="topbar__brand">{{ config('app.name') }}</span>
             <nav>
                 <a href="{{ route('admin.logs.index') }}" @class(['active' => request()->routeIs('admin.logs.*', 'admin.transactions.*')])>Logs</a>
+                <a href="{{ route('admin.licenses.index') }}" @class(['active' => request()->routeIs('admin.licenses.*')])>Licenses</a>
                 <a href="{{ route('admin.settings.edit') }}" @class(['active' => request()->routeIs('admin.settings.*')])>Settings</a>
             </nav>
             <form method="post" action="{{ route('admin.logout') }}">

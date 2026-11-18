@@ -91,9 +91,20 @@ Sign in with a user made by `php artisan admin:user you@example.com` (it also
 resets the password of an existing user). There is no sign-up page.
 
 - **Logs**: every HTTP call to a gateway (checkout, status checks, key
-  verification) and every Ecwid order update, with masked headers and the full
+  verification), every WHMCS license check and every Ecwid order update, with masked headers and the full
   request and response bodies. You can filter by service, operation, result,
   store, order/payment reference and date. Each payment has a page listing its calls.
+- **Licenses**: every store that opened the app settings in Ecwid or took a
+  payment. For each one it shows the S4D key the merchant entered, the WHMCS
+  status, whether the license covers the store's gateway, and the WHMCS details
+  (registered name and company, product, addons, registration date, next due
+  date). It also shows when and from where the key was last checked
+  (`settings`, `payment` or `admin`) and when it was last verified as Active.
+  A store is recorded when its owner opens the settings page, which also saves
+  the store's name, URL and email from the Ecwid profile. Its license is
+  updated whenever the key is verified or saved there, and at each payment.
+  "Re-check with WHMCS now" skips the cache. Every call to WHMCS is also
+  logged (service `whmcs`, operation `license.verify`).
 - **Settings**: how long logs are kept (7 days to 2 years, or never; default 90
   days). `model:prune` runs daily and deletes older entries, and the settings
   page has a button to apply it immediately. Gateway requests contain the

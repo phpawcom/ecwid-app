@@ -53,6 +53,22 @@ class EcwidApi
     }
 
     /**
+     * Store name, URL and owner email (needs read_store_profile, which payment apps have).
+     *
+     * @return array{name: ?string, url: ?string, email: ?string}
+     */
+    public function getStoreSummary(int $storeId, string $token): array
+    {
+        $profile = $this->client($token)->get("$storeId/profile")->throw()->json();
+
+        return [
+            'name' => data_get($profile, 'settings.storeName') ?: data_get($profile, 'account.accountName'),
+            'url' => data_get($profile, 'generalInfo.storeUrl'),
+            'email' => data_get($profile, 'account.accountEmail') ?: data_get($profile, 'company.email'),
+        ];
+    }
+
+    /**
      * All app storage keys for the store, as key => value.
      *
      * @return array<string, string>

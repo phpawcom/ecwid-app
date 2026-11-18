@@ -24,6 +24,21 @@ class SettingsPageTest extends TestCase
         parent::setUp();
         config(['payments.gateways.fake' => FakeGateway::class, 'licensing.gateways.fake' => ['addons' => ['Fake']]]);
         EcwidApp::create(['client_id' => 'fake-app', 'client_secret' => self::SECRET, 'gateway' => 'fake', 'name' => 'Fake']);
+        $this->fakeLicense('Active', 'name=Fake Gateway;status=Active');
+    }
+
+    private function fakeLicense(string $status, string $addons = '', ?string $expectKey = null, ?bool $expectForce = null): void
+    {
+        $checker = Mockery::mock(WhmcsLicenseChecker::class);
+        $expectation = $checker->shouldReceive('check');
+        if ($expectKey !== null) {
+            $expectation->with($expectKey, $expectForce);
+        }
+        $expectation->andReturn(LicenseResult::fromWhmcs([
+            'status' => $status, 'addons' => $addons, 'productname' => 'Ecwid Payments',
+            'registeredname' => 'Ahmed Al Balushi', 'companyname' => 'Example LLC', 'nextduedate' => '2027-01-31',
+        ], now()->toImmutable()));
+        $this->app->instance(WhmcsLicenseChecker::class, $checker);
     }
 
     private function payload(): string
@@ -105,9 +120,7 @@ class SettingsPageTest extends TestCase
     public function test_license_check_reports_gateway_coverage(): void
     {
         Http::fake(['app.ecwid.com/*' => Http::response([])]);
-        $checker = Mockery::mock(WhmcsLicenseChecker::class);
-        $checker->shouldReceive('check')->with('ECWID-1', true)->andReturn(LicenseResult::fromWhmcs(['status' => 'Active', 'addons' => 'name=Thawani;status=Active']));
-        $this->app->instance(WhmcsLicenseChecker::class, $checker);
+        $this->fakeLicense('Active', 'name=Thawani;status=Active', 'ECWID-1', true);
         $token = $this->openPage();
 
         $this->postJson('/ecwid/fake-app/settings/license', ['license' => 'ECWID-1', 'refresh' => true], ['X-Settings-Context' => $token])

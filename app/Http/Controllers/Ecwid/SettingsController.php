@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Licensing\StoreLicenseService;
 use App\Logging\GatewayLogger;
 use App\Models\EcwidApp;
+use App\Models\EcwidStore;
 use App\Payments\Data\SettingField;
 use App\Payments\GatewayManager;
 use Illuminate\Http\JsonResponse;
@@ -53,6 +54,8 @@ class SettingsController extends Controller
             $loadError = 'Your saved settings could not be loaded from Ecwid. Reload the page to try again.';
         }
 
+        $this->rememberStore($context);
+
         // First visit: fill in defaults (v1 did this through the JS SDK).
         foreach ($gateway->settingsFields() as $field) {
             $values[$field->key] ??= $field->default;
@@ -91,6 +94,13 @@ class SettingsController extends Controller
             return response()->json(['ok' => false, 'message' => 'Ecwid did not accept the settings. Please try again.'], 502);
         }
 
+        // Record the license on the store even if the page's own check did not run.
+        try {
+            $this->licenses->check($app, $context->storeId, $values[self::LICENSE_KEY], via: StoreLicenseService::VIA_SETTINGS);
+        } catch (Throwable $e) {
+            Log::warning('License check after saving settings failed', ['store' => $context->storeId, 'error' => $e->getMessage()]);
+        }
+
         return response()->json(['ok' => true, 'message' => 'Settings saved.']);
     }
 
@@ -99,7 +109,7 @@ class SettingsController extends Controller
         $context = $this->context($request, $app);
         $gateway = $this->gateways->get($app->gateway);
 
-        $result = $this->licenses->check($app, $context->storeId, (string) $request->input('license'), forceRemote: $request->boolean('refresh'));
+        $result = $this->licenses->check($app, $context->storeId, (string) $request->input('license'), forceRemote: $request->boolean('refresh'), via: StoreLicenseService::VIA_SETTINGS);
         $problem = $this->licenses->problem($result, $gateway->key(), $gateway->name());
 
         return response()->json([
@@ -131,6 +141,27 @@ class SettingsController extends Controller
         }
 
         return response()->json(['ok' => $check->ok, 'message' => $check->message]);
+    }
+
+    /**
+     * Keep the store's name and URL for Admin → Licenses. Best effort: the
+     * page works without it.
+     */
+    private function rememberStore(SettingsContext $context): void
+    {
+        $store = EcwidStore::firstOrNew(['ecwid_app_id' => $context->app->id, 'store_id' => $context->storeId]);
+        $store->last_seen_at = now();
+
+        try {
+            $summary = $this->ecwid->getStoreSummary($context->storeId, $context->accessToken);
+            $store->store_name = $summary['name'] ?: $store->store_name;
+            $store->store_url = $summary['url'] ?: $store->store_url;
+            $store->store_email = $summary['email'] ?: $store->store_email;
+        } catch (Throwable $e) {
+            Log::info('Could not read Ecwid store profile', ['store' => $context->storeId, 'error' => $e->getMessage()]);
+        }
+
+        $store->save();
     }
 
     private function context(Request $request, EcwidApp $app): SettingsContext

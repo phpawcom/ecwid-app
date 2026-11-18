@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\LicenseController;
 use App\Http\Controllers\Admin\LogController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\TransactionController;
@@ -59,6 +60,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('logs', [LogController::class, 'index'])->name('logs.index');
         Route::get('logs/{log}', [LogController::class, 'show'])->name('logs.show');
+        Route::get('licenses', [LicenseController::class, 'index'])->name('licenses.index');
+        Route::get('licenses/{store}', [LicenseController::class, 'show'])->name('licenses.show');
+        Route::post('licenses/{store}/recheck', [LicenseController::class, 'recheck'])->name('licenses.recheck')->middleware('throttle:20,1');
+
         Route::get('transactions/{transaction}', [TransactionController::class, 'show'])->name('transactions.show');
 
         Route::get('settings', [AdminSettingsController::class, 'edit'])->name('settings.edit');
