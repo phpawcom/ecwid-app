@@ -3,6 +3,7 @@
 namespace App\Payments\Gateways\Thawani;
 
 use App\Models\PaymentTransaction;
+use App\Payments\Contracts\HandlesWebhooks;
 use App\Payments\Contracts\PaymentGateway;
 use App\Payments\Data\CheckoutRequest;
 use App\Payments\Data\CheckoutSession;
@@ -17,7 +18,7 @@ use S4D\Laravel\Thawani\Services\ThawaniService;
  * Thawani only charges in OMR, so other store currencies need the merchant's
  * exchange rate.
  */
-class ThawaniGateway implements PaymentGateway
+class ThawaniGateway implements HandlesWebhooks, PaymentGateway
 {
     public function __construct(private readonly ThawaniClientFactory $factory) {}
 
@@ -112,6 +113,50 @@ class ThawaniGateway implements PaymentGateway
         }
 
         return new CredentialCheck(true, 'Your Thawani API keys are working'.(self::isTestMode($settings) ? ' (test mode)' : '').'.');
+    }
+
+    public function webhookInstructions(): string
+    {
+        return 'In the Thawani merchant portal, add this URL as a webhook for checkout events, then paste the webhook secret Thawani shows you below. '
+            .'Orders are then marked paid even if the shopper closes the page before returning to the store.';
+    }
+
+    /**
+     * Thawani signs "{body}-{timestamp}" with HMAC-SHA256 using the webhook
+     * secret, and sends the result in Thawani-Signature with the timestamp
+     * in Thawani-Timestamp. The package compares against the re-encoded
+     * JSON body, so both the raw body and that form are accepted.
+     */
+    public function verifyWebhook(string $rawBody, array $headers, string $secret): bool
+    {
+        $signature = strtolower(trim($headers['thawani-signature'] ?? ''));
+        $timestamp = trim($headers['thawani-timestamp'] ?? '');
+
+        if ($secret === '' || $signature === '' || $timestamp === '') {
+            return false;
+        }
+
+        $bodies = [$rawBody];
+        $decoded = json_decode($rawBody, true);
+        if (is_array($decoded)) {
+            $bodies[] = json_encode($decoded);
+            $bodies[] = json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
+
+        foreach (array_unique($bodies) as $body) {
+            if (hash_equals(hash_hmac('sha256', $body.'-'.$timestamp, $secret), $signature)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function webhookReference(array $payload): ?string
+    {
+        $sessionId = $payload['data']['session_id'] ?? null;
+
+        return is_string($sessionId) && $sessionId !== '' ? $sessionId : null;
     }
 
     /**

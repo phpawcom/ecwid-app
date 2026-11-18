@@ -72,6 +72,11 @@
     @endforelse
 
     <div class="card">
+        <h2 style="margin-top: 0">Gateway webhooks</h2>
+        <p style="margin: 0">Webhook URLs are per store, not per app. Each merchant sees their own URL on the app's settings page in Ecwid, adds it in their Thawani merchant portal, and pastes Thawani's webhook secret back on that page. You can see a store's URL and whether its secret is saved under <a href="{{ route('admin.licenses.index') }}">Licenses</a>.</p>
+    </div>
+
+    <div class="card">
         <h2 style="margin-top: 0">Permissions (scopes) the app needs</h2>
         <div class="table-wrap">
             <table>

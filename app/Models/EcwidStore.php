@@ -4,17 +4,20 @@ namespace App\Models;
 
 use App\Licensing\LicenseResult;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * A store that has used one of our apps. Merchant settings themselves live in
  * Ecwid app storage; this keeps what we need to see in /admin: who the store
  * is and the state of its S4D license.
  */
+#[Hidden(['webhook_secret'])]
 #[Fillable([
-    'ecwid_app_id', 'store_id', 'store_name', 'store_url', 'store_email',
+    'ecwid_app_id', 'store_id', 'store_name', 'store_url', 'store_email', 'webhook_secret', 'last_webhook_at',
     'license_key', 'license_status', 'license_description', 'license_gateways', 'license_data',
     'license_checked_at', 'license_verified_at', 'license_checked_via', 'last_seen_at',
 ])]
@@ -28,7 +31,27 @@ class EcwidStore extends Model
             'license_checked_at' => 'datetime',
             'license_verified_at' => 'datetime',
             'last_seen_at' => 'datetime',
+            'webhook_secret' => 'encrypted',
+            'last_webhook_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (EcwidStore $store) {
+            $store->webhook_token ??= Str::random(40);
+        });
+    }
+
+    /** The URL the merchant gives the gateway for webhooks. */
+    public function webhookUrl(): string
+    {
+        if (! $this->webhook_token) {
+            // Stores recorded before webhooks existed get a token on first use.
+            $this->forceFill(['webhook_token' => Str::random(40)])->save();
+        }
+
+        return route('webhooks.receive', $this->webhook_token);
     }
 
     public function app(): BelongsTo

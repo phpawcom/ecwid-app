@@ -7,6 +7,8 @@ use App\Licensing\StoreLicenseService;
 use App\Models\EcwidApp;
 use App\Models\EcwidStore;
 use App\Models\GatewayLog;
+use App\Payments\Contracts\HandlesWebhooks;
+use App\Payments\GatewayManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -56,12 +58,13 @@ class LicenseController extends Controller
         ]);
     }
 
-    public function show(EcwidStore $store): View
+    public function show(EcwidStore $store, GatewayManager $gateways): View
     {
         $store->load('app');
 
         return view('admin.licenses.show', [
             'store' => $store,
+            'webhooks' => $gateways->has($store->app->gateway) && $gateways->get($store->app->gateway) instanceof HandlesWebhooks,
             'license' => $store->license(),
             'transactions' => $store->transactions()->latest('id')->limit(20)->get(),
             'checks' => GatewayLog::query()

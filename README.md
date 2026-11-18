@@ -32,6 +32,24 @@ reference until the port is finished.
 | `config/payments.php` | Registered gateways |
 | `config/licensing.php` | WHMCS server and which license addon/product unlocks which gateway |
 
+## Webhooks
+
+Gateways that implement `App\Payments\Contracts\HandlesWebhooks` (Thawani
+does) get a webhook URL per store, `POST /webhooks/{token}`, shown on the
+store's settings page in Ecwid. The merchant adds that URL in the gateway's
+portal and pastes the gateway's webhook secret on the same page. The secret is
+stored encrypted on our side, not in Ecwid storage.
+
+A webhook with a valid signature only tells us which payment to look at. It is
+then settled the same way as when the shopper returns: we ask the gateway for
+the status and update the Ecwid order once. That way a payment is recorded even
+when the shopper closes the tab. Webhooks are logged as operation
+`webhook.received`.
+
+Thawani signature: `Thawani-Signature` = hex HMAC-SHA256 of
+`"{body}-{Thawani-Timestamp}"` with the webhook secret. This is the scheme
+`phpawcom/thawani_laravel`'s `handleCallback()` uses.
+
 ## Ecwid apps
 
 Each Ecwid app (the public `thawani-gateway` app, or a store's private

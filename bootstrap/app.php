@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // with its own encrypted context token instead of a session.
         $middleware->preventRequestForgery(except: [
             'ecwid/*',
+            'webhooks/*',
             'payment-request.php',
         ]);
     })

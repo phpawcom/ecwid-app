@@ -14,6 +14,11 @@
                 <dt>Ecwid app</dt><dd>{{ $store->app->name }} <span class="muted">({{ $store->app->client_id }})</span></dd>
                 <dt>Gateway</dt><dd>{{ $store->app->gateway }}</dd>
                 <dt>Last seen</dt><dd>{{ $store->last_seen_at?->format('Y-m-d H:i') ?? '—' }}</dd>
+                @if ($webhooks)
+                    <dt>Webhook URL</dt><dd><code>{{ $store->webhookUrl() }}</code></dd>
+                    <dt>Webhook secret</dt><dd>{{ $store->webhook_secret ? 'Saved' : 'Not set' }}</dd>
+                    <dt>Last webhook</dt><dd>{{ $store->last_webhook_at?->format('Y-m-d H:i') ?? 'None yet' }}</dd>
+                @endif
             </dl>
         </div>
 

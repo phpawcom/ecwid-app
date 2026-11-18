@@ -9,6 +9,7 @@ use App\Licensing\StoreLicenseService;
 use App\Logging\GatewayLogger;
 use App\Models\EcwidApp;
 use App\Models\EcwidStore;
+use App\Payments\Contracts\HandlesWebhooks;
 use App\Payments\Data\SettingField;
 use App\Payments\GatewayManager;
 use Illuminate\Http\JsonResponse;
@@ -54,7 +55,7 @@ class SettingsController extends Controller
             $loadError = 'Your saved settings could not be loaded from Ecwid. Reload the page to try again.';
         }
 
-        $this->rememberStore($context);
+        $store = $this->rememberStore($context);
 
         // First visit: fill in defaults (v1 did this through the JS SDK).
         foreach ($gateway->settingsFields() as $field) {
@@ -69,6 +70,12 @@ class SettingsController extends Controller
             'licenseKey' => self::LICENSE_KEY,
             'contextToken' => $context->toToken(),
             'loadError' => $loadError,
+            'webhook' => $gateway instanceof HandlesWebhooks ? [
+                'url' => $store->webhookUrl(),
+                'instructions' => $gateway->webhookInstructions(),
+                'hasSecret' => (bool) $store->webhook_secret,
+                'lastReceivedAt' => $store->last_webhook_at,
+            ] : null,
         ]);
     }
 
@@ -92,6 +99,19 @@ class SettingsController extends Controller
             Log::warning('Could not save Ecwid app storage', ['store' => $context->storeId, 'error' => $e->getMessage()]);
 
             return response()->json(['ok' => false, 'message' => 'Ecwid did not accept the settings. Please try again.'], 502);
+        }
+
+        // The webhook secret stays on our server only (Ecwid storage would
+        // send it back in every payment request for no reason). Blank keeps
+        // the saved one.
+        if ($gateway instanceof HandlesWebhooks) {
+            $store = EcwidStore::firstOrCreate(['ecwid_app_id' => $app->id, 'store_id' => $context->storeId]);
+            $secret = trim((string) $request->input('webhook_secret', ''));
+            if ($request->boolean('clear_webhook_secret')) {
+                $store->update(['webhook_secret' => null]);
+            } elseif ($secret !== '') {
+                $store->update(['webhook_secret' => $secret]);
+            }
         }
 
         // Record the license on the store even if the page's own check did not run.
@@ -147,7 +167,7 @@ class SettingsController extends Controller
      * Keep the store's name and URL for Admin → Licenses. Best effort: the
      * page works without it.
      */
-    private function rememberStore(SettingsContext $context): void
+    private function rememberStore(SettingsContext $context): EcwidStore
     {
         $store = EcwidStore::firstOrNew(['ecwid_app_id' => $context->app->id, 'store_id' => $context->storeId]);
         $store->last_seen_at = now();
@@ -162,6 +182,8 @@ class SettingsController extends Controller
         }
 
         $store->save();
+
+        return $store;
     }
 
     private function context(Request $request, EcwidApp $app): SettingsContext

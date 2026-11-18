@@ -10,6 +10,7 @@ use App\Http\Controllers\Ecwid\LegacyController;
 use App\Http\Controllers\Ecwid\PaymentController;
 use App\Http\Controllers\Ecwid\SettingsController;
 use App\Http\Controllers\Ecwid\StorefrontController;
+use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => response('Ecwid payment apps by S4D.', 200, ['Content-Type' => 'text/plain']));
@@ -37,6 +38,12 @@ Route::prefix('ecwid/{app}')->name('ecwid.')->group(function () {
 // Gateway return URLs ({transaction} = public ULID).
 Route::get('pay/{transaction}/return', [PaymentController::class, 'return'])->name('payments.return');
 Route::get('pay/{transaction}/cancel', [PaymentController::class, 'cancel'])->name('payments.cancel');
+
+// Gateway webhooks, one URL per store ({token} = ecwid_stores.webhook_token).
+Route::post('webhooks/{token}', [WebhookController::class, 'receive'])
+    ->where('token', '[A-Za-z0-9]{20,64}')
+    ->middleware('throttle:120,1')
+    ->name('webhooks.receive');
 
 // v1 URLs already registered with Ecwid.
 Route::post('payment-request.php', [LegacyController::class, 'paymentRequest']);

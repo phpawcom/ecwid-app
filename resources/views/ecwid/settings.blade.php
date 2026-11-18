@@ -13,6 +13,8 @@
         .s4d-status--error { color: #d0352b; white-space: pre-line; }
         .s4d-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
         .s4d-logo img { max-height: 48px; }
+        .s4d-copy { display: flex; gap: 8px; align-items: center; }
+        .s4d-copy .field { flex: 1; }
     </style>
 </head>
 <body>
@@ -74,6 +76,38 @@
                                                 <div class="s4d-status" id="license-status"></div>
                                             </div>
 
+                                            @if ($webhook)
+                                                <div class="fieldset">
+                                                    <div class="fieldset__title">Webhook URL</div>
+                                                    <div class="s4d-copy">
+                                                        <div class="field field--medium field--filled">
+                                                            <input type="text" class="field__input" id="webhook-url" value="{{ $webhook['url'] }}" readonly data-skip="1">
+                                                        </div>
+                                                        <button type="button" class="btn btn-default btn-medium" id="copy-webhook">Copy</button>
+                                                    </div>
+                                                    <div class="fieldset__note">{{ $webhook['instructions'] }}</div>
+                                                    @if ($webhook['lastReceivedAt'])
+                                                        <div class="fieldset__note">Last webhook received {{ $webhook['lastReceivedAt']->diffForHumans() }}.</div>
+                                                    @endif
+                                                </div>
+                                                <div class="fieldset">
+                                                    <div class="fieldset__title">Webhook secret</div>
+                                                    <div class="field field--medium field--filled">
+                                                        <input type="password" class="field__input" id="webhook-secret" autocomplete="new-password" data-skip="1"
+                                                               placeholder="{{ $webhook['hasSecret'] ? 'Saved. Leave blank to keep it.' : 'Paste the secret from Thawani' }}">
+                                                    </div>
+                                                    @if ($webhook['hasSecret'])
+                                                        <div class="custom-checkbox" style="margin-top: 6px">
+                                                            <label>
+                                                                <input type="checkbox" class="custom-checkbox__input" id="clear-webhook-secret" data-skip="1">
+                                                                <span class="custom-checkbox__label"></span>
+                                                                <span class="custom-checkbox__text">Remove the saved secret</span>
+                                                            </label>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endif
+
                                             <div class="s4d-actions">
                                                 <button type="button" class="btn btn-primary btn-medium" id="save">Save</button>
                                                 <button type="button" class="btn btn-default btn-medium" id="verify">Verify {{ $gateway->name() }} keys</button>
@@ -117,7 +151,7 @@
     function settings() {
         var data = {};
         Array.prototype.forEach.call(form.elements, function (el) {
-            if (!el.name) return;
+            if (!el.name || el.dataset.skip) return;
             data[el.name] = el.type === 'checkbox' ? el.checked : el.value;
         });
         return data;
@@ -153,9 +187,19 @@
     document.getElementById('save').addEventListener('click', function () {
         var button = this;
         busy(button, true);
-        post(urls.save, { settings: settings() }).then(function (result) {
+        var body = { settings: settings() };
+        var secret = document.getElementById('webhook-secret');
+        var clearSecret = document.getElementById('clear-webhook-secret');
+        if (secret) body.webhook_secret = secret.value;
+        if (clearSecret) body.clear_webhook_secret = clearSecret.checked;
+        post(urls.save, body).then(function (result) {
             status('form-status', result);
             busy(button, false);
+            if (result.ok && secret && (secret.value || (clearSecret && clearSecret.checked))) {
+                secret.value = '';
+                secret.placeholder = clearSecret && clearSecret.checked ? 'Paste the secret from Thawani' : 'Saved. Leave blank to keep it.';
+                if (clearSecret) clearSecret.checked = false;
+            }
         });
     });
 
@@ -177,6 +221,21 @@
         status('license-status', { ok: true, message: 'Checking license…' });
         post(urls.license, { license: value, refresh: refresh === true }).then(function (result) {
             status('license-status', result);
+        });
+    }
+
+    var copyWebhook = document.getElementById('copy-webhook');
+    if (copyWebhook) {
+        copyWebhook.addEventListener('click', function () {
+            var input = document.getElementById('webhook-url');
+            input.select();
+            var done = function () { copyWebhook.textContent = 'Copied'; setTimeout(function () { copyWebhook.textContent = 'Copy'; }, 1500); };
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(input.value).then(done, function () { document.execCommand('copy'); done(); });
+            } else {
+                document.execCommand('copy');
+                done();
+            }
         });
     }
 
