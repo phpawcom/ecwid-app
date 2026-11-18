@@ -8,16 +8,13 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('ecwid:import-legacy {path=legacy : Folder holding the v1 app}')]
-#[Description('Register the Ecwid apps from the v1 config.php files as Thawani apps')]
+#[Description('Register the v1 Thawani Ecwid app from legacy/config.php')]
 class ImportLegacyAppsCommand extends Command
 {
     public function handle(): int
     {
         $root = base_path($this->argument('path'));
         $configs = ['.' => "$root/config.php"];
-        foreach (glob("$root/stores/*/config.php") as $file) {
-            $configs['stores/'.basename(dirname($file))] = $file;
-        }
 
         foreach ($configs as $legacyPath => $file) {
             if (! is_file($file)) {

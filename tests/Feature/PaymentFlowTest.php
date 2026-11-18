@@ -38,7 +38,7 @@ class PaymentFlowTest extends TestCase
         FakeGateway::$statusChecks = 0;
 
         $this->ecwidApp = EcwidApp::create([
-            'client_id' => 'fake-app', 'client_secret' => self::SECRET, 'gateway' => 'fake', 'name' => 'Fake', 'legacy_path' => 'stores/shop.example',
+            'client_id' => 'fake-app', 'client_secret' => self::SECRET, 'gateway' => 'fake', 'name' => 'Fake', 'legacy_path' => '.',
         ]);
 
         $this->license('Active', 'name=Fake Gateway;status=Active');
@@ -219,9 +219,9 @@ class PaymentFlowTest extends TestCase
         $this->postPayment($this->ecwidRequest())->assertNotFound();
     }
 
-    public function test_legacy_store_url_still_works(): void
+    public function test_legacy_v1_url_still_works(): void
     {
-        $this->postPayment($this->ecwidRequest(), '/stores/shop.example/payment-request.php')
+        $this->postPayment($this->ecwidRequest(), '/payment-request.php')
             ->assertRedirect('https://pay.example/session/abc');
     }
 

@@ -152,7 +152,7 @@ class AdminTest extends TestCase
     {
         $this->actingAs(User::factory()->create());
         EcwidApp::create(['client_id' => 'thawani-gateway', 'client_secret' => 'x', 'gateway' => 'thawani', 'name' => 'Thawani', 'legacy_path' => '.']);
-        EcwidApp::create(['client_id' => 'custom-app-1-1', 'client_secret' => 'x', 'gateway' => 'thawani', 'name' => 'Thawani (shop.com)', 'legacy_path' => 'stores/shop.com', 'is_active' => false]);
+        EcwidApp::create(['client_id' => 'custom-app-1-1', 'client_secret' => 'x', 'gateway' => 'thawani', 'name' => 'Thawani (shop.com)', 'is_active' => false]);
 
         $this->get('/admin/ecwid-setup')->assertOk()
             ->assertSee(url('/ecwid/thawani-gateway/payment'))
@@ -160,7 +160,7 @@ class AdminTest extends TestCase
             ->assertSee(url('/ecwid/thawani-gateway/storefront.js'))
             ->assertSee(url('/ecwid/custom-app-1-1/payment'))
             ->assertSee(url('/payment-request.php'))
-            ->assertSee(url('/stores/shop.com/payment-request.php'))
+            ->assertSee(url('/index.html'))
             ->assertSee('Disabled')
             ->assertSee('update_orders');
     }

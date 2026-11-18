@@ -17,7 +17,7 @@ return new class extends Migration
             $table->text('client_secret')->comment('encrypted');
             $table->string('gateway', 50);
             $table->string('name');
-            $table->string('legacy_path')->nullable()->unique()->comment('v1 folder, e.g. stores/keatha.com, so old Ecwid URLs keep working');
+            $table->string('legacy_path')->nullable()->unique()->comment('"." for the app that answers on the v1 URLs');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

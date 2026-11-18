@@ -36,7 +36,7 @@ class EcwidSetupController extends Controller
                     ['Settings page URL', 'iframeUrl', route('ecwid.settings', $app), 'Opens inside the Ecwid admin (My Apps → the app) for the merchant\'s keys and license.'],
                     ['Storefront script URL', 'customJsUrl', route('ecwid.storefront', $app), 'Optional. Adds the card logos under the payment option at checkout.'],
                 ],
-                'legacy' => $app->legacy_path ? $this->legacyUrls($app->legacy_path) : [],
+                'legacy' => $app->legacy_path === '.' ? $this->legacyUrls() : [],
             ]),
             'scopes' => self::SCOPES,
             'baseUrl' => url('/'),
@@ -56,14 +56,12 @@ class EcwidSetupController extends Controller
      *
      * @return list<array{0: string, 1: string}>
      */
-    private function legacyUrls(string $legacyPath): array
+    private function legacyUrls(): array
     {
-        $base = rtrim(url($legacyPath === '.' ? '/' : $legacyPath), '/');
-
-        return array_values(array_filter([
-            ['paymentUrl', "$base/payment-request.php"],
-            ['iframeUrl', $legacyPath === '.' ? "$base/index.html" : "$base/index.php"],
-            $legacyPath === '.' ? ['customJsUrl', "$base/clientscript.js"] : null,
-        ]));
+        return [
+            ['paymentUrl', url('payment-request.php')],
+            ['iframeUrl', url('index.html')],
+            ['customJsUrl', url('clientscript.js')],
+        ];
     }
 }

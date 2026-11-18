@@ -42,9 +42,6 @@ Route::get('pay/{transaction}/cancel', [PaymentController::class, 'cancel'])->na
 Route::post('payment-request.php', [LegacyController::class, 'paymentRequest']);
 Route::get('index.html', [LegacyController::class, 'settings']);
 Route::get('clientscript.js', [LegacyController::class, 'storefront']);
-Route::post('stores/{store}/payment-request.php', [LegacyController::class, 'paymentRequest'])->where('store', '[A-Za-z0-9.\-]+');
-Route::get('stores/{store}/index.php', [LegacyController::class, 'settings'])->where('store', '[A-Za-z0-9.\-]+');
-Route::get('stores/{store}/', [LegacyController::class, 'settings'])->where('store', '[A-Za-z0-9.\-]+');
 
 /*
 | Admin

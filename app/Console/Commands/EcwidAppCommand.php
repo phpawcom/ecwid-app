@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
     {--secret= : Ecwid client_secret}
     {--gateway= : Payment gateway key from config/payments.php}
     {--name= : Display name}
-    {--legacy-path= : v1 folder this app answered on ("." for the root app, "stores/example.com" for a store app)}
+    {--legacy-path= : Set to "." for the app that answers on the v1 URLs (payment-request.php, index.html)}
     {--disable : Stop accepting requests for this app}
     {--enable : Accept requests for this app again}')]
 #[Description('Register or update an Ecwid app and the payment gateway it uses')]

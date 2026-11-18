@@ -21,7 +21,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->preventRequestForgery(except: [
             'ecwid/*',
             'payment-request.php',
-            'stores/*/payment-request.php',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

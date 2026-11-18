@@ -39,7 +39,7 @@ Each Ecwid app (the public `thawani-gateway` app, or a store's private
 `ecwid_apps` table:
 
 ```bash
-php artisan ecwid:import-legacy          # import the v1 apps from legacy/
+php artisan ecwid:import-legacy          # import the v1 Thawani app from legacy/config.php
 php artisan ecwid:app custom-app-123-1 --gateway=thawani --secret=... --name="Thawani (shop.com)"
 ```
 
@@ -49,9 +49,8 @@ php artisan ecwid:app custom-app-123-1 --gateway=thawani --secret=... --name="Th
 - iframeUrl (settings page): `GET /ecwid/{client_id}/settings`
 - customJsUrl (storefront logos): `GET /ecwid/{client_id}/storefront.js`
 
-The v1 URLs (`/payment-request.php`, `/index.html`, `/clientscript.js`,
-`/stores/{domain}/payment-request.php`, `/stores/{domain}/index.php`) are also
-routed. The web server must send them to Laravel, not try to run them as PHP
+The v1 URLs (`/payment-request.php`, `/index.html`, `/clientscript.js`) are
+also routed, to the app registered with `--legacy-path=.`. The web server must send them to Laravel, not try to run them as PHP
 files.
 
 Merchant settings stay in Ecwid app storage, with the same keys as v1
