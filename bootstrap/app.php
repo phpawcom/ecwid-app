@@ -12,6 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->redirectGuestsTo(fn () => route('admin.login'));
+        $middleware->redirectUsersTo(fn () => route('admin.logs.index'));
+
         // Ecwid posts payment requests from the shopper's browser, and the
         // settings page runs inside the Ecwid admin iframe and authenticates
         // with its own encrypted context token instead of a session.

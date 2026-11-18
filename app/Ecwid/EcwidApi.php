@@ -2,6 +2,8 @@
 
 namespace App\Ecwid;
 
+use App\Logging\GatewayLogger;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -19,12 +21,35 @@ class EcwidApi
 
     public const INCOMPLETE = 'INCOMPLETE';
 
+    public function __construct(private readonly GatewayLogger $logger) {}
+
+    /**
+     * Logged in Admin → Logs (service "ecwid"), since it completes a payment.
+     */
     public function updateOrderPaymentStatus(int $storeId, string $token, string $orderId, string $status, ?string $externalTransactionId = null): Response
     {
-        return $this->client($token)->put("$storeId/orders/".rawurlencode($orderId), array_filter([
-            'paymentStatus' => $status,
-            'externalTransactionId' => $externalTransactionId,
-        ]));
+        $path = "$storeId/orders/".rawurlencode($orderId);
+        $body = array_filter(['paymentStatus' => $status, 'externalTransactionId' => $externalTransactionId]);
+        $headers = ['Authorization' => 'Bearer '.$token, 'Content-Type' => 'application/json'];
+        $started = hrtime(true);
+
+        try {
+            $response = $this->client($token)->put($path, $body);
+        } catch (ConnectionException $e) {
+            $this->logger->record('ecwid', 'PUT', self::BASE_URL.$path, $headers, json_encode($body), null, null, false, $e->getMessage(), self::elapsed($started), 'order.update');
+
+            throw $e;
+        }
+
+        $this->logger->record('ecwid', 'PUT', self::BASE_URL.$path, $headers, json_encode($body), $response->status(), $response->body(),
+            $response->successful(), $response->successful() ? null : 'HTTP '.$response->status(), self::elapsed($started), 'order.update');
+
+        return $response;
+    }
+
+    private static function elapsed(int $started): int
+    {
+        return (int) round((hrtime(true) - $started) / 1e6);
     }
 
     /**

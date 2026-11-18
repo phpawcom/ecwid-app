@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'ecwid_app_id', 'store_id', 'gateway', 'order_id', 'order_number', 'amount', 'currency',
@@ -46,5 +47,10 @@ class PaymentTransaction extends Model
     public function app(): BelongsTo
     {
         return $this->belongsTo(EcwidApp::class, 'ecwid_app_id');
+    }
+
+    public function logs(): HasMany
+    {
+        return $this->hasMany(GatewayLog::class);
     }
 }

@@ -7,6 +7,7 @@ use App\Licensing\LicenseResult;
 use App\Licensing\WhmcsLicenseChecker;
 use App\Models\EcwidApp;
 use App\Models\EcwidStore;
+use App\Models\GatewayLog;
 use App\Models\PaymentTransaction;
 use App\Payments\PaymentStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -114,6 +115,13 @@ class PaymentFlowTest extends TestCase
         $transaction->refresh();
         $this->assertSame(PaymentStatus::Paid, $transaction->status);
         $this->assertNotNull($transaction->ecwid_synced_at);
+
+        $log = GatewayLog::where('service', 'ecwid')->sole();
+        $this->assertSame('order.update', $log->operation);
+        $this->assertSame($transaction->id, $log->payment_transaction_id);
+        $this->assertSame('••••oken', $log->request_headers['Authorization']);
+        $this->assertStringNotContainsString('secret_token', json_encode($log->getAttributes()));
+        $this->assertSame('{"paymentStatus":"PAID","externalTransactionId":"sess_abc"}', $log->request_body);
     }
 
     public function test_returning_twice_does_not_update_ecwid_twice(): void

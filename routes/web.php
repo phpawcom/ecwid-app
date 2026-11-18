@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\LogController;
+use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
+use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Ecwid\LegacyController;
 use App\Http\Controllers\Ecwid\PaymentController;
 use App\Http\Controllers\Ecwid\SettingsController;
@@ -39,3 +43,26 @@ Route::get('clientscript.js', [LegacyController::class, 'storefront']);
 Route::post('stores/{store}/payment-request.php', [LegacyController::class, 'paymentRequest'])->where('store', '[A-Za-z0-9.\-]+');
 Route::get('stores/{store}/index.php', [LegacyController::class, 'settings'])->where('store', '[A-Za-z0-9.\-]+');
 Route::get('stores/{store}/', [LegacyController::class, 'settings'])->where('store', '[A-Za-z0-9.\-]+');
+
+/*
+| Admin
+*/
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::middleware('guest')->group(function () {
+        Route::get('login', [AuthController::class, 'show'])->name('login');
+        Route::post('login', [AuthController::class, 'login'])->middleware('throttle:20,1')->name('login.attempt');
+    });
+
+    Route::middleware('auth')->group(function () {
+        Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+        Route::redirect('/', '/admin/logs')->name('home');
+
+        Route::get('logs', [LogController::class, 'index'])->name('logs.index');
+        Route::get('logs/{log}', [LogController::class, 'show'])->name('logs.show');
+        Route::get('transactions/{transaction}', [TransactionController::class, 'show'])->name('transactions.show');
+
+        Route::get('settings', [AdminSettingsController::class, 'edit'])->name('settings.edit');
+        Route::put('settings', [AdminSettingsController::class, 'update'])->name('settings.update');
+        Route::post('settings/prune-logs', [AdminSettingsController::class, 'prune'])->name('settings.prune');
+    });
+});

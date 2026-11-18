@@ -6,6 +6,7 @@ use App\Ecwid\EcwidApi;
 use App\Ecwid\SettingsContext;
 use App\Http\Controllers\Controller;
 use App\Licensing\StoreLicenseService;
+use App\Logging\GatewayLogger;
 use App\Models\EcwidApp;
 use App\Payments\Data\SettingField;
 use App\Payments\GatewayManager;
@@ -29,6 +30,7 @@ class SettingsController extends Controller
         private readonly GatewayManager $gateways,
         private readonly EcwidApi $ecwid,
         private readonly StoreLicenseService $licenses,
+        private readonly GatewayLogger $logger,
     ) {}
 
     public function show(Request $request, EcwidApp $app): Response
@@ -109,7 +111,7 @@ class SettingsController extends Controller
 
     public function verifyGateway(Request $request, EcwidApp $app): JsonResponse
     {
-        $this->context($request, $app);
+        $context = $this->context($request, $app);
         $gateway = $this->gateways->get($app->gateway);
 
         $settings = [];
@@ -118,7 +120,10 @@ class SettingsController extends Controller
         }
 
         try {
-            $check = $gateway->verifyCredentials($settings);
+            $check = $this->logger->withContext(
+                ['ecwid_app_id' => $app->id, 'store_id' => $context->storeId, 'operation' => 'credentials.verify'],
+                fn () => $gateway->verifyCredentials($settings),
+            );
         } catch (Throwable $e) {
             Log::warning('Gateway credential check failed', ['gateway' => $gateway->key(), 'error' => $e->getMessage()]);
 

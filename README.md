@@ -85,6 +85,26 @@ So when a new gateway ships, create a WHMCS addon for it (for example
    `public/images/gateways/<key>-512x512.png` (logo).
 4. Register the Ecwid app for it with `php artisan ecwid:app`.
 
+## Admin (`/admin`)
+
+Sign in with a user made by `php artisan admin:user you@example.com` (it also
+resets the password of an existing user). There is no sign-up page.
+
+- **Logs**: every HTTP call to a gateway (checkout, status checks, key
+  verification) and every Ecwid order update, with masked headers and the full
+  request and response bodies. You can filter by service, operation, result,
+  store, order/payment reference and date. Each payment has a page listing its calls.
+- **Settings**: how long logs are kept (7 days to 2 years, or never; default 90
+  days). `model:prune` runs daily and deletes older entries, and the settings
+  page has a button to apply it immediately. Gateway requests contain the
+  shopper's name, phone and email, so this setting also controls how long that
+  personal data is kept.
+
+Thawani calls go through `LoggingThawaniService`, which replaces the package's
+cURL `post()` with Laravel's HTTP client. That is what logs them, turns TLS
+verification on (the package turns it off) and lets tests use `Http::fake()`.
+A new gateway should send its calls through `GatewayLogger::record()` the same way.
+
 ## Development
 
 ```bash
@@ -93,4 +113,5 @@ php artisan migrate
 php artisan test
 ```
 
-Production also needs the scheduler (`* * * * * php artisan schedule:run`).
+Production also needs the scheduler (`* * * * * php artisan schedule:run`) for
+reconciling payments and pruning logs.

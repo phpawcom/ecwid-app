@@ -5,6 +5,7 @@ namespace App\Payments;
 use App\Ecwid\EcwidApi;
 use App\Ecwid\PaymentRequest;
 use App\Licensing\StoreLicenseService;
+use App\Logging\GatewayLogger;
 use App\Models\EcwidApp;
 use App\Models\PaymentTransaction;
 use App\Payments\Data\CheckoutRequest;
@@ -24,6 +25,7 @@ class PaymentService
         private readonly GatewayManager $gateways,
         private readonly StoreLicenseService $licenses,
         private readonly EcwidApi $ecwid,
+        private readonly GatewayLogger $logger,
     ) {}
 
     /**
@@ -56,7 +58,7 @@ class PaymentService
         ]);
 
         try {
-            $session = $gateway->createCheckout(new CheckoutRequest(
+            $session = $this->logger->withContext($this->logContext($transaction, 'checkout.create'), fn () => $gateway->createCheckout(new CheckoutRequest(
                 transaction: $transaction,
                 total: $request->total(),
                 currency: $request->currency(),
@@ -69,7 +71,7 @@ class PaymentService
                 customerEmail: $request->email(),
                 customerPhone: $request->customerPhone(),
                 hasDiscount: $request->hasDiscount(),
-            ));
+            )));
         } catch (Throwable $e) {
             $transaction->update(['status' => PaymentStatus::Failed, 'last_error' => $e->getMessage()]);
 
@@ -103,7 +105,10 @@ class PaymentService
 
             if (! $transaction->status->isFinal()) {
                 try {
-                    $status = $this->gateways->get($transaction->gateway)->fetchStatus($transaction);
+                    $status = $this->logger->withContext(
+                        $this->logContext($transaction, 'payment.status'),
+                        fn () => $this->gateways->get($transaction->gateway)->fetchStatus($transaction),
+                    );
                 } catch (Throwable $e) {
                     Log::warning('Could not fetch payment status', ['transaction' => $transaction->public_id, 'error' => $e->getMessage()]);
                     $status = PaymentStatus::Pending;
@@ -152,13 +157,13 @@ class PaymentService
         $ecwidStatus = $transaction->status === PaymentStatus::Paid ? EcwidApi::PAID : EcwidApi::INCOMPLETE;
 
         try {
-            $response = $this->ecwid->updateOrderPaymentStatus(
+            $response = $this->logger->withContext($this->logContext($transaction, 'order.update'), fn () => $this->ecwid->updateOrderPaymentStatus(
                 $transaction->store_id,
                 $transaction->ecwid_token,
                 $transaction->order_id,
                 $ecwidStatus,
                 $transaction->gateway_reference,
-            );
+            ));
         } catch (Throwable $e) {
             $transaction->update(['last_error' => 'Ecwid update failed: '.$e->getMessage()]);
             Log::error('Ecwid order update failed', ['transaction' => $transaction->public_id, 'error' => $e->getMessage()]);
@@ -172,5 +177,18 @@ class PaymentService
             $transaction->update(['last_error' => 'Ecwid update failed: HTTP '.$response->status().' '.mb_substr($response->body(), 0, 500)]);
             Log::error('Ecwid order update failed', ['transaction' => $transaction->public_id, 'status' => $response->status(), 'body' => $response->body()]);
         }
+    }
+
+    /**
+     * @return array{ecwid_app_id: int, store_id: int, payment_transaction_id: int, operation: string}
+     */
+    private function logContext(PaymentTransaction $transaction, string $operation): array
+    {
+        return [
+            'ecwid_app_id' => $transaction->ecwid_app_id,
+            'store_id' => $transaction->store_id,
+            'payment_transaction_id' => $transaction->id,
+            'operation' => $operation,
+        ];
     }
 }
