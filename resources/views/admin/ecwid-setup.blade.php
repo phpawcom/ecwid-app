@@ -10,8 +10,8 @@
 
     @if (! $isHttps || $isLocal)
         <div class="errors" style="max-width: 760px">
-            These URLs use <strong>{{ config('app.url') }}</strong> (<code>APP_URL</code>).
-            Ecwid needs a public <strong>https</strong> address, so set <code>APP_URL</code> to the production URL on the live server before copying them.
+            These URLs start with <strong>{{ $baseUrl }}</strong>, the address you opened this admin on.
+            Ecwid needs a public <strong>https</strong> address, so copy them from the admin on the live server (with <code>APP_URL</code> set to its https URL).
         </div>
     @endif
 

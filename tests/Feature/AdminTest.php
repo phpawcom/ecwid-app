@@ -169,10 +169,8 @@ class AdminTest extends TestCase
     {
         $this->actingAs(User::factory()->create());
 
-        config(['app.url' => 'http://localhost']);
-        $this->get('/admin/ecwid-setup')->assertOk()->assertSee('needs a public', false)->assertSee('No Ecwid apps registered yet');
+        $this->get('http://localhost/admin/ecwid-setup')->assertOk()->assertSee('needs a public', false)->assertSee('No Ecwid apps registered yet');
 
-        config(['app.url' => 'https://apps.s4d.om']);
-        $this->get('/admin/ecwid-setup')->assertOk()->assertDontSee('needs a public', false);
+        $this->get('https://apps.s4d.om/admin/ecwid-setup')->assertOk()->assertDontSee('needs a public', false);
     }
 }

@@ -39,10 +39,16 @@ class EcwidSetupController extends Controller
                 'legacy' => $app->legacy_path ? $this->legacyUrls($app->legacy_path) : [],
             ]),
             'scopes' => self::SCOPES,
-            'isHttps' => str_starts_with((string) config('app.url'), 'https://'),
-            'isLocal' => in_array(parse_url((string) config('app.url'), PHP_URL_HOST), ['localhost', '127.0.0.1'], true)
-                || str_ends_with((string) parse_url((string) config('app.url'), PHP_URL_HOST), '.test'),
+            'baseUrl' => url('/'),
+            'isHttps' => str_starts_with(url('/'), 'https://'),
+            'isLocal' => self::isLocalHost((string) parse_url(url('/'), PHP_URL_HOST)),
         ]);
+    }
+
+    private static function isLocalHost(string $host): bool
+    {
+        return in_array($host, ['localhost', '127.0.0.1', '::1'], true)
+            || str_ends_with($host, '.test') || str_ends_with($host, '.local');
     }
 
     /**
