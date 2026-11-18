@@ -147,4 +147,32 @@ class AdminTest extends TestCase
 
         $this->post('/admin/login', ['email' => 'admin@example.com', 'password' => 'a-long-enough-password'])->assertRedirect('/admin/logs');
     }
+
+    public function test_ecwid_setup_page_lists_urls_per_app(): void
+    {
+        $this->actingAs(User::factory()->create());
+        EcwidApp::create(['client_id' => 'thawani-gateway', 'client_secret' => 'x', 'gateway' => 'thawani', 'name' => 'Thawani', 'legacy_path' => '.']);
+        EcwidApp::create(['client_id' => 'custom-app-1-1', 'client_secret' => 'x', 'gateway' => 'thawani', 'name' => 'Thawani (shop.com)', 'legacy_path' => 'stores/shop.com', 'is_active' => false]);
+
+        $this->get('/admin/ecwid-setup')->assertOk()
+            ->assertSee(url('/ecwid/thawani-gateway/payment'))
+            ->assertSee(url('/ecwid/thawani-gateway/settings'))
+            ->assertSee(url('/ecwid/thawani-gateway/storefront.js'))
+            ->assertSee(url('/ecwid/custom-app-1-1/payment'))
+            ->assertSee(url('/payment-request.php'))
+            ->assertSee(url('/stores/shop.com/payment-request.php'))
+            ->assertSee('Disabled')
+            ->assertSee('update_orders');
+    }
+
+    public function test_ecwid_setup_warns_when_app_url_is_not_public_https(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        config(['app.url' => 'http://localhost']);
+        $this->get('/admin/ecwid-setup')->assertOk()->assertSee('needs a public', false)->assertSee('No Ecwid apps registered yet');
+
+        config(['app.url' => 'https://apps.s4d.om']);
+        $this->get('/admin/ecwid-setup')->assertOk()->assertDontSee('needs a public', false);
+    }
 }
