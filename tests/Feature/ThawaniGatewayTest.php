@@ -161,12 +161,44 @@ class ThawaniGatewayTest extends TestCase
     {
         $gateway = app(ThawaniGateway::class);
 
-        $this->assertTrue($gateway->verifyCredentials(['publishable_key' => 'pk', 'secret_key' => 'sk'])->ok);
-        $this->assertFalse($gateway->verifyCredentials(['publishable_key' => 'pk'])->ok);
+        $this->assertTrue($gateway->verifyCredentials(['publishable_key' => 'pk', 'secret_key' => 'sk', 'testMode' => 'false'])->ok);
+        $this->assertFalse($gateway->verifyCredentials(['publishable_key' => 'pk', 'testMode' => 'false'])->ok);
 
         $this->client->fail = true;
-        $check = $gateway->verifyCredentials(['publishable_key' => 'pk', 'secret_key' => 'sk']);
+        $check = $gateway->verifyCredentials(['publishable_key' => 'pk', 'secret_key' => 'sk', 'testMode' => 'false']);
         $this->assertFalse($check->ok);
         $this->assertSame('Invalid API key', $check->message);
+    }
+
+    public function test_verify_checks_both_key_pairs_when_both_are_set(): void
+    {
+        $check = app(ThawaniGateway::class)->verifyCredentials([
+            'testMode' => 'true', 'uat_publishable_key' => 'uat_pk', 'uat_secret_key' => 'uat_sk', 'publishable_key' => 'pk', 'secret_key' => 'sk',
+        ]);
+
+        $this->assertTrue($check->ok);
+        $this->assertStringContainsString('UAT keys (in use): working.', $check->message);
+        $this->assertStringContainsString('Production keys: working.', $check->message);
+    }
+
+    public function test_keys_by_mode(): void
+    {
+        // v1 stores: their single saved pair is the production pair; test mode uses Thawani's public UAT keys.
+        $v1 = ['publishable_key' => 'pk', 'secret_key' => 'sk', 'testMode' => 'true'];
+        $this->assertSame([ThawaniGateway::UAT_PUBLISHABLE_KEY, ThawaniGateway::UAT_SECRET_KEY], ThawaniGateway::keys($v1));
+        $this->assertSame(['pk', 'sk'], ThawaniGateway::keys(['testMode' => 'false'] + $v1));
+
+        $both = $v1 + ['uat_publishable_key' => 'uat_pk', 'uat_secret_key' => 'uat_sk'];
+        $this->assertSame(['uat_pk', 'uat_sk'], ThawaniGateway::keys($both));
+        $this->assertSame(['pk', 'sk'], ThawaniGateway::keys($both, testMode: false));
+    }
+
+    public function test_settings_page_defaults_uat_keys(): void
+    {
+        $fields = collect(app(ThawaniGateway::class)->settingsFields())->keyBy('key');
+
+        $this->assertSame(ThawaniGateway::UAT_PUBLISHABLE_KEY, $fields['uat_publishable_key']->default);
+        $this->assertSame(ThawaniGateway::UAT_SECRET_KEY, $fields['uat_secret_key']->default);
+        $this->assertSame('', $fields['publishable_key']->default);
     }
 }

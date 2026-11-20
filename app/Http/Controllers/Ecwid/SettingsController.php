@@ -114,6 +114,7 @@ class SettingsController extends Controller
             'fields' => $gateway->settingsFields(),
             'values' => $values,
             'licenseKey' => self::LICENSE_KEY,
+            'storeDomain' => $store->domain(),
             'contextToken' => $context->toToken(),
             'loadError' => $loadError,
             'webhook' => $gateway instanceof HandlesWebhooks ? [
@@ -248,6 +249,12 @@ class SettingsController extends Controller
 
     private function normalise(SettingField $field, mixed $value): string
     {
+        if ($field->type === 'radio') {
+            $value = trim((string) $value);
+
+            return array_key_exists($value, $field->options) ? $value : $field->default;
+        }
+
         if ($field->type === 'checkbox') {
             return filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false';
         }

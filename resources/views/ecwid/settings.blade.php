@@ -70,6 +70,22 @@
         .s4d-status--error { color: var(--error); white-space: pre-line; }
         .s4d-field .s4d-status { margin-top: 6px; }
 
+        .s4d-segment { display: inline-flex; padding: 3px; border-radius: 9px; background: var(--soft); border: 1px solid var(--line); }
+        .s4d-field .s4d-segment label { margin: 0; font-weight: 600; cursor: pointer; }
+        .s4d-segment input { position: absolute; opacity: 0; pointer-events: none; }
+        .s4d-segment span { display: block; padding: 7px 18px; border-radius: 7px; color: var(--muted); transition: background .15s, color .15s; }
+        .s4d-segment input:checked + span { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+        .s4d-segment input:focus-visible + span { box-shadow: 0 0 0 3px rgba(10, 116, 230, .25); }
+
+        .s4d-keyset { margin-top: 18px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; transition: border-color .15s, opacity .15s; }
+        .s4d-keyset__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .s4d-keyset h3 { margin: 0; font-size: 14px; font-weight: 600; }
+        .s4d-keyset__tag { display: none; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--accent); color: #fff; }
+        .s4d-keyset.is-active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+        .s4d-keyset.is-active .s4d-keyset__tag { display: inline-block; }
+        .s4d-keyset.is-idle { opacity: .7; }
+        .s4d-keyset + .s4d-field { margin-top: 18px; }
+
         .s4d-alert { padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; background: var(--error-soft); color: var(--error); }
 
         .s4d-aside { position: sticky; top: 16px; }
@@ -81,7 +97,7 @@
     </style>
 </head>
 <body>
-@php($testField = collect($fields)->first(fn ($f) => $f->type === 'checkbox' && str_contains(strtolower($f->key), 'test')))
+@php($modeField = collect($fields)->first(fn ($f) => $f->type === 'radio' && array_key_exists('true', $f->options)))
 <div class="s4d">
     <header class="s4d-header">
         <img src="{{ asset('images/gateways/'.$gateway->key().'-512x512.png') }}" alt="">
@@ -89,7 +105,7 @@
             <h1>{{ $gateway->name() }} payments</h1>
             <p>Accept Visa and MasterCard in your Ecwid store through {{ $gateway->name() }}.</p>
         </div>
-        @if ($testField)
+        @if ($modeField)
             <span class="s4d-mode" id="mode-badge"></span>
         @endif
     </header>
@@ -102,35 +118,22 @@
         <form id="settings" autocomplete="off" onsubmit="return false">
             <section class="s4d-section">
                 <h2>{{ $gateway->name() }} account</h2>
-                <p>The API keys from your {{ $gateway->name() }} merchant portal.</p>
+                <p>Save both key pairs, then pick the mode the store uses.</p>
 
-                @foreach ($fields as $field)
-                    <div class="s4d-field">
-                        @if ($field->type === 'checkbox')
-                            <label class="s4d-switch">
-                                <input type="checkbox" name="{{ $field->key }}" @checked(filter_var($values[$field->key] ?? '', FILTER_VALIDATE_BOOLEAN))>
-                                <span class="track"></span>
-                                <span>
-                                    <strong>{{ $field->label }}</strong>
-                                    @if ($field->help)
-                                        <span class="s4d-note">{{ $field->help }}</span>
-                                    @endif
-                                </span>
-                            </label>
-                        @else
-                            <label for="f-{{ $field->key }}">{{ $field->label }} @if ($field->required)<span class="req">*</span>@endif</label>
-                            <div class="s4d-input">
-                                <input id="f-{{ $field->key }}" type="{{ $field->type }}" name="{{ $field->key }}" value="{{ $values[$field->key] ?? '' }}" spellcheck="false" @required($field->required)
-                                       @if ($field->type === 'password') class="has-toggle" autocomplete="new-password" @endif>
-                                @if ($field->type === 'password')
-                                    <button type="button" class="s4d-reveal" data-reveal="f-{{ $field->key }}">Show</button>
-                                @endif
+                @foreach (collect($fields)->groupBy(fn ($f) => $f->group ?? '#'.$f->key) as $group => $groupFields)
+                    @if (str_starts_with($group, '#'))
+                        @include('ecwid.partials.field', ['field' => $groupFields->first()])
+                    @else
+                        <div class="s4d-keyset" data-active-when="{{ $groupFields->first()->activeWhen }}">
+                            <div class="s4d-keyset__head">
+                                <h3>{{ $group }}</h3>
+                                <span class="s4d-keyset__tag">In use</span>
                             </div>
-                            @if ($field->help)
-                                <div class="s4d-note">{{ $field->help }}</div>
-                            @endif
-                        @endif
-                    </div>
+                            @foreach ($groupFields as $field)
+                                @include('ecwid.partials.field', ['field' => $field])
+                            @endforeach
+                        </div>
+                    @endif
                 @endforeach
             </section>
 
@@ -172,6 +175,13 @@
             <section class="s4d-section">
                 <h2>S4D license</h2>
                 <p>Your license key from <a href="https://www.s4d.om/g/ec" target="_blank" rel="noopener">The Source for Development</a>.</p>
+                <div class="s4d-field">
+                    <label for="store-domain">Store domain</label>
+                    <div class="s4d-input">
+                        <input type="text" id="store-domain" value="{{ $storeDomain ?? 'Not known yet' }}" readonly data-skip="1">
+                    </div>
+                    <div class="s4d-note">The license is checked for this domain, taken from your Ecwid store URL.</div>
+                </div>
                 <div class="s4d-field">
                     <label for="f-license">License key</label>
                     <div class="s4d-input">
@@ -220,6 +230,7 @@
         var data = {};
         Array.prototype.forEach.call(form.elements, function (el) {
             if (!el.name || el.dataset.skip) return;
+            if (el.type === 'radio' && !el.checked) return;
             data[el.name] = el.type === 'checkbox' ? el.checked : el.value;
         });
         return data;
@@ -317,14 +328,24 @@
     });
 
     var badge = document.getElementById('mode-badge');
-    var testMode = @json($testField?->key);
-    if (badge && testMode) {
+    var modeField = @json($modeField?->key);
+    if (modeField) {
+        var keysets = document.querySelectorAll('.s4d-keyset[data-active-when]');
         var showMode = function () {
-            var on = form.elements[testMode].checked;
-            badge.textContent = on ? 'Test mode' : 'Live';
-            badge.className = 's4d-mode ' + (on ? 's4d-mode--test' : 's4d-mode--live');
+            var mode = form.elements[modeField].value;
+            if (badge) {
+                badge.textContent = mode === 'true' ? 'Test mode' : 'Live';
+                badge.className = 's4d-mode ' + (mode === 'true' ? 's4d-mode--test' : 's4d-mode--live');
+            }
+            Array.prototype.forEach.call(keysets, function (set) {
+                var active = set.dataset.activeWhen === mode;
+                set.classList.toggle('is-active', active);
+                set.classList.toggle('is-idle', !active);
+            });
         };
-        form.elements[testMode].addEventListener('change', showMode);
+        Array.prototype.forEach.call(form.querySelectorAll('input[name="' + modeField + '"]'), function (radio) {
+            radio.addEventListener('change', showMode);
+        });
         showMode();
     }
 

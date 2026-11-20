@@ -29,12 +29,13 @@ class StoreLicenseService
     {
         $licenseKey = trim($licenseKey);
 
+        $store = EcwidStore::firstOrNew(['ecwid_app_id' => $app->id, 'store_id' => $storeId]);
+
         $result = $this->logger->withContext(
             ['ecwid_app_id' => $app->id, 'store_id' => $storeId, 'operation' => 'license.verify'],
-            fn () => $this->checker->check($licenseKey, $forceRemote),
+            fn () => $this->checker->check($licenseKey, $forceRemote, $store->domain()),
         );
 
-        $store = EcwidStore::firstOrNew(['ecwid_app_id' => $app->id, 'store_id' => $storeId]);
         $store->last_seen_at = now();
 
         if ($licenseKey === '') {

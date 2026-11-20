@@ -25,7 +25,10 @@ class WhmcsLicenseChecker
         private readonly GatewayLogger $logger,
     ) {}
 
-    public function check(string $licenseKey, bool $forceRemote = false): LicenseResult
+    /**
+     * @param  string|null  $domain  the store's domain to report to WHMCS (defaults to LICENSE_DOMAIN, then this app's host)
+     */
+    public function check(string $licenseKey, bool $forceRemote = false, ?string $domain = null): LicenseResult
     {
         $licenseKey = trim($licenseKey);
 
@@ -37,7 +40,8 @@ class WhmcsLicenseChecker
             return new LicenseResult('Active', 'Licensing is disabled on this server.');
         }
 
-        $cacheKey = 'license:'.hash('sha256', $licenseKey);
+        $domain = $domain ?: $this->defaultDomain();
+        $cacheKey = $this->cacheKey($licenseKey, $domain);
         $cached = $this->cache->get($cacheKey);
         $cachedAt = isset($cached['checked_at']) ? CarbonImmutable::parse($cached['checked_at']) : null;
 
@@ -45,7 +49,7 @@ class WhmcsLicenseChecker
             return LicenseResult::fromWhmcs($cached['data'], $cachedAt, fromCache: true);
         }
 
-        $remote = $this->remoteCheck($licenseKey);
+        $remote = $this->remoteCheck($licenseKey, $domain);
 
         if ($remote === null) {
             // WHMCS unreachable: fall back to the last good result while it is
@@ -69,21 +73,26 @@ class WhmcsLicenseChecker
         return $result;
     }
 
-    public function forget(string $licenseKey): void
+    public function forget(string $licenseKey, ?string $domain = null): void
     {
-        $this->cache->forget('license:'.hash('sha256', trim($licenseKey)));
+        $this->cache->forget($this->cacheKey(trim($licenseKey), $domain ?: $this->defaultDomain()));
+    }
+
+    private function cacheKey(string $licenseKey, string $domain): string
+    {
+        return 'license:'.hash('sha256', $licenseKey.'|'.$domain);
     }
 
     /**
      * @return array<string, string>|null the WHMCS response fields, or null when the server could not be reached
      */
-    private function remoteCheck(string $licenseKey): ?array
+    private function remoteCheck(string $licenseKey, string $domain): ?array
     {
         $checkToken = time().md5(Str::random(32).$licenseKey);
         $url = config('licensing.server_url').config('licensing.verify_path');
         $fields = [
             'licensekey' => $licenseKey,
-            'domain' => $this->domain(),
+            'domain' => $domain,
             'ip' => $this->ip(),
             'dir' => $this->directory(),
             'check_token' => $checkToken,
@@ -133,7 +142,7 @@ class WhmcsLicenseChecker
         return $data;
     }
 
-    private function domain(): string
+    private function defaultDomain(): string
     {
         return config('licensing.domain') ?: (string) parse_url((string) config('app.url'), PHP_URL_HOST);
     }

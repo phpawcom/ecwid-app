@@ -20,6 +20,11 @@ use S4D\Laravel\Thawani\Services\ThawaniService;
  */
 class ThawaniGateway implements HandlesWebhooks, PaymentGateway
 {
+    /** Thawani's public UAT (sandbox) keys from its API docs: the default for test mode. */
+    public const UAT_PUBLISHABLE_KEY = 'HGvTMLDssJghr9tlN9gr4DVYt0qyBy';
+
+    public const UAT_SECRET_KEY = 'rRQ26GcsZzoEhbrP2HZvLYDbn9C9et';
+
     public function __construct(private readonly ThawaniClientFactory $factory) {}
 
     public function key(): string
@@ -34,15 +39,41 @@ class ThawaniGateway implements HandlesWebhooks, PaymentGateway
 
     public function settingsFields(): array
     {
-        // Keys match v1 so existing merchants keep their saved settings.
+        // publishable_key, secret_key and testMode match v1: the single key
+        // pair saved by v1 becomes the production pair.
         return [
-            new SettingField('publishable_key', 'Publishable Key', required: true),
-            new SettingField('secret_key', 'Secret Key', 'password', required: true),
+            new SettingField('testMode', 'Mode', 'radio', default: 'true',
+                options: ['true' => 'Test (UAT)', 'false' => 'Live'],
+                help: 'Test mode uses your UAT keys and charges nothing. Live mode takes real payments with your production keys.'),
+            new SettingField('uat_publishable_key', 'Publishable Key', default: self::UAT_PUBLISHABLE_KEY, group: 'UAT keys (test mode)', activeWhen: 'true',
+                help: 'Filled in with Thawani\'s public UAT keys. Replace them with your own UAT keys if you have them.'),
+            new SettingField('uat_secret_key', 'Secret Key', 'password', default: self::UAT_SECRET_KEY, group: 'UAT keys (test mode)', activeWhen: 'true'),
+            new SettingField('publishable_key', 'Publishable Key', group: 'Production keys (live mode)', activeWhen: 'false'),
+            new SettingField('secret_key', 'Secret Key', 'password', group: 'Production keys (live mode)', activeWhen: 'false'),
             new SettingField('money_exchange', 'Exchange Rate', 'text',
                 help: 'Thawani only accepts Omani Rial. If your store uses another currency, enter the rate to convert it to OMR (for example 0.385 for USD).'),
-            new SettingField('testMode', 'Enable test mode (no charges)', 'checkbox',
-                help: 'Use your UAT keys while test mode is on.', default: 'true'),
         ];
+    }
+
+    /**
+     * The key pair for a mode: production keys for live mode; UAT keys for
+     * test mode, falling back to Thawani's public UAT keys when none are saved.
+     *
+     * @param  array<string, mixed>  $settings
+     * @return array{0: string, 1: string}
+     */
+    public static function keys(array $settings, ?bool $testMode = null): array
+    {
+        $testMode ??= self::isTestMode($settings);
+
+        if (! $testMode) {
+            return [trim((string) ($settings['publishable_key'] ?? '')), trim((string) ($settings['secret_key'] ?? ''))];
+        }
+
+        $publishable = trim((string) ($settings['uat_publishable_key'] ?? ''));
+        $secret = trim((string) ($settings['uat_secret_key'] ?? ''));
+
+        return $publishable === '' && $secret === '' ? [self::UAT_PUBLISHABLE_KEY, self::UAT_SECRET_KEY] : [$publishable, $secret];
     }
 
     public function createCheckout(CheckoutRequest $request): CheckoutSession
@@ -95,11 +126,41 @@ class ThawaniGateway implements HandlesWebhooks, PaymentGateway
 
     public function verifyCredentials(array $settings): CredentialCheck
     {
-        if (empty($settings['publishable_key']) || empty($settings['secret_key'])) {
-            return new CredentialCheck(false, 'Enter both the Publishable Key and the Secret Key.');
+        $testMode = self::isTestMode($settings);
+        [$publishable, $secret] = self::keys($settings, $testMode);
+        $label = $testMode ? 'UAT' : 'production';
+
+        if ($publishable === '' || $secret === '') {
+            return new CredentialCheck(false, "Enter both $label keys (Publishable Key and Secret Key), or switch the mode.");
         }
 
-        $client = $this->client($settings);
+        $error = $this->keyError($publishable, $secret, $testMode);
+
+        // Also check the other pair when the merchant entered one (not
+        // Thawani's public UAT keys), so it is known to work before switching.
+        [$otherPublishable, $otherSecret] = self::keys($settings, ! $testMode);
+        $checkOther = $otherPublishable !== '' && $otherSecret !== ''
+            && ! in_array([$otherPublishable, $otherSecret], [[$publishable, $secret], [self::UAT_PUBLISHABLE_KEY, self::UAT_SECRET_KEY]], true);
+
+        if (! $checkOther) {
+            return $error === null
+                ? new CredentialCheck(true, 'Your Thawani API keys are working'.($testMode ? ' (test mode)' : '').'.')
+                : new CredentialCheck(false, $error);
+        }
+
+        $otherError = $this->keyError($otherPublishable, $otherSecret, ! $testMode);
+        $otherLabel = $testMode ? 'Production' : 'UAT';
+
+        return new CredentialCheck($error === null && $otherError === null, implode("\n", [
+            ucfirst($label).' keys (in use): '.($error ?? 'working.'),
+            $otherLabel.' keys: '.($otherError ?? 'working.'),
+        ]));
+    }
+
+    /** Null when Thawani accepts the keys, otherwise its error message. */
+    private function keyError(string $publishable, string $secret, bool $testMode): ?string
+    {
+        $client = $this->factory->make($publishable, $secret, $testMode);
         $url = $client->generatePaymentUrl([
             'client_reference_id' => (string) random_int(100000, 999999),
             'products' => [['name' => 'API key test', 'unit_amount' => 100, 'quantity' => 1]],
@@ -108,11 +169,7 @@ class ThawaniGateway implements HandlesWebhooks, PaymentGateway
             'metadata' => ['note' => 'Ecwid app settings: checking API keys'],
         ]);
 
-        if (empty($url)) {
-            return new CredentialCheck(false, self::errorMessage($client));
-        }
-
-        return new CredentialCheck(true, 'Your Thawani API keys are working'.(self::isTestMode($settings) ? ' (test mode)' : '').'.');
+        return empty($url) ? self::errorMessage($client) : null;
     }
 
     public function webhookInstructions(): string
@@ -164,11 +221,9 @@ class ThawaniGateway implements HandlesWebhooks, PaymentGateway
      */
     private function client(array $settings): ThawaniService
     {
-        return $this->factory->make(
-            (string) ($settings['publishable_key'] ?? ''),
-            (string) ($settings['secret_key'] ?? ''),
-            self::isTestMode($settings),
-        );
+        [$publishable, $secret] = self::keys($settings);
+
+        return $this->factory->make($publishable, $secret, self::isTestMode($settings));
     }
 
     /**

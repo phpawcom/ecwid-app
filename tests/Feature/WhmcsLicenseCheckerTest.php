@@ -35,6 +35,21 @@ class WhmcsLicenseCheckerTest extends TestCase
         Http::assertSent(fn (Request $r) => $r['licensekey'] === 'ECWID-1234' && isset($r['domain'], $r['ip'], $r['dir']));
     }
 
+    public function test_reports_the_given_store_domain_and_caches_per_domain(): void
+    {
+        $this->fakeWhmcs();
+        config(['app.url' => 'https://thawani.apps.s4d.om', 'licensing.domain' => null]);
+        $checker = app(WhmcsLicenseChecker::class);
+
+        $checker->check('ECWID-1234', domain: 'keatha.com');
+        $checker->check('ECWID-1234', domain: 'keatha.com');
+        $checker->check('ECWID-1234');
+
+        Http::assertSentCount(2);
+        Http::assertSent(fn (Request $r) => $r['domain'] === 'keatha.com');
+        Http::assertSent(fn (Request $r) => $r['domain'] === 'thawani.apps.s4d.om');
+    }
+
     public function test_response_with_wrong_hash_is_rejected(): void
     {
         $this->fakeWhmcs(validHash: false);

@@ -32,7 +32,7 @@ class SettingsPageTest extends TestCase
         $checker = Mockery::mock(WhmcsLicenseChecker::class);
         $expectation = $checker->shouldReceive('check');
         if ($expectKey !== null) {
-            $expectation->with($expectKey, $expectForce);
+            $expectation->with($expectKey, $expectForce, Mockery::any());
         }
         $expectation->andReturn(LicenseResult::fromWhmcs([
             'status' => $status, 'addons' => $addons, 'productname' => 'Ecwid Payments',
@@ -83,6 +83,25 @@ class SettingsPageTest extends TestCase
             ->assertSee('value="saved-key"', false)
             ->assertSee('value="ECWID-XYZ"', false)
             ->assertDontSee('{&quot;value', false);
+    }
+
+    public function test_license_is_checked_for_the_store_domain(): void
+    {
+        Http::fake([
+            'app.ecwid.com/api/v3/1003/storage' => Http::response([]),
+            'app.ecwid.com/api/v3/1003/profile' => Http::response(['generalInfo' => ['storeUrl' => 'https://www.Keatha.com/shop']]),
+        ]);
+        $checker = Mockery::mock(WhmcsLicenseChecker::class);
+        $checker->shouldReceive('check')->once()->with('ECWID-1', true, 'keatha.com')->andReturn(LicenseResult::fromWhmcs(['status' => 'Active']));
+        $this->app->instance(WhmcsLicenseChecker::class, $checker);
+
+        $html = $this->get('/ecwid/fake-app/settings?payload='.$this->payload())
+            ->assertOk()
+            ->assertSee('id="store-domain" value="keatha.com"', false)
+            ->getContent();
+        preg_match('/var context = "([^"]+)"/', $html, $m);
+
+        $this->postJson('/ecwid/fake-app/settings/license', ['license' => 'ECWID-1', 'refresh' => true], ['X-Settings-Context' => stripslashes($m[1])])->assertOk();
     }
 
     public function test_page_needs_a_valid_payload(): void

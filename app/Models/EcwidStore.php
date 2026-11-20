@@ -54,6 +54,17 @@ class EcwidStore extends Model
         return route('webhooks.receive', $this->webhook_token);
     }
 
+    /**
+     * The store's domain (from its Ecwid profile URL, without "www."), sent
+     * to WHMCS with license checks. Null until the profile has been read.
+     */
+    public function domain(): ?string
+    {
+        $host = parse_url((string) $this->store_url, PHP_URL_HOST);
+
+        return $host ? preg_replace('/^www\./', '', strtolower($host)) : null;
+    }
+
     public function app(): BelongsTo
     {
         return $this->belongsTo(EcwidApp::class, 'ecwid_app_id');

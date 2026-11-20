@@ -33,7 +33,7 @@ class ThawaniHttpLoggingTest extends TestCase
         $this->transaction = PaymentTransaction::create([
             'ecwid_app_id' => $app->id, 'store_id' => 1003, 'gateway' => 'thawani', 'order_id' => 'transaction_42',
             'amount' => 1.5, 'currency' => 'OMR', 'ecwid_token' => 't', 'return_url' => 'https://example.test',
-            'gateway_settings' => ['publishable_key' => 'pk_live_1234', 'secret_key' => 'sk_secret_5678', 'testMode' => 'true'],
+            'gateway_settings' => ['uat_publishable_key' => 'pk_live_1234', 'uat_secret_key' => 'sk_secret_5678', 'testMode' => 'true'],
         ]);
 
     }
@@ -107,7 +107,7 @@ class ThawaniHttpLoggingTest extends TestCase
     {
         Http::fake([self::API.'*' => Http::response(['success' => false, 'code' => 4001, 'description' => 'Invalid API key'], 401)]);
 
-        $check = app(ThawaniGateway::class)->verifyCredentials(['publishable_key' => 'pk', 'secret_key' => 'sk_bad_key']);
+        $check = app(ThawaniGateway::class)->verifyCredentials(['uat_publishable_key' => 'pk', 'uat_secret_key' => 'sk_bad_key', 'testMode' => 'true']);
 
         $this->assertFalse($check->ok);
         $log = GatewayLog::sole();
