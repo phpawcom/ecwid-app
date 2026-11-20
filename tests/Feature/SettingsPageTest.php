@@ -71,10 +71,76 @@ class SettingsPageTest extends TestCase
         Http::assertSent(fn (Request $r) => $r->hasHeader('Authorization', 'Bearer secret_admin'));
     }
 
+    public function test_page_unwraps_values_saved_as_json(): void
+    {
+        Http::fake(['app.ecwid.com/api/v3/1003/storage' => Http::response([
+            ['key' => 'api_key', 'value' => '{"value":"saved-key"}'],
+            ['key' => 's4d_license', 'value' => '{"value":"ECWID-XYZ"}'],
+        ])]);
+
+        $this->get('/ecwid/fake-app/settings?payload='.$this->payload())
+            ->assertOk()
+            ->assertSee('value="saved-key"', false)
+            ->assertSee('value="ECWID-XYZ"', false)
+            ->assertDontSee('{&quot;value', false);
+    }
+
     public function test_page_needs_a_valid_payload(): void
     {
-        $this->get('/ecwid/fake-app/settings')->assertForbidden();
-        $this->get('/ecwid/fake-app/settings?payload=bad')->assertForbidden();
+        $this->get('/ecwid/fake-app/settings?payload=bad')
+            ->assertForbidden()
+            ->assertSee('EcwidApp.init', false);
+    }
+
+    public function test_page_without_payload_reads_the_url_fragment(): void
+    {
+        Http::fake();
+
+        $this->get('/ecwid/fake-app/settings?lang=en')
+            ->assertOk()
+            ->assertSee('/ecwid/fake-app/settings/open', false)
+            ->assertSee('EcwidApp.getPayload', false)
+            ->assertDontSee('var context', false);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_fragment_page_opens_settings_once_ecwid_accepts_the_token(): void
+    {
+        Http::fake(['app.ecwid.com/api/v3/1003/storage' => Http::response([['key' => 'api_key', 'value' => 'saved-key']])]);
+
+        $html = $this->post('/ecwid/fake-app/settings/open', ['store_id' => '1003', 'access_token' => 'secret_admin', 'lang' => 'en'])
+            ->assertOk()
+            ->assertSee('value="saved-key"', false)
+            ->getContent();
+
+        Http::assertSent(fn (Request $r) => $r->url() === 'https://app.ecwid.com/api/v3/1003/storage' && $r->hasHeader('Authorization', 'Bearer secret_admin'));
+        $this->assertDatabaseHas('ecwid_stores', ['store_id' => 1003]);
+
+        preg_match('/var context = "([^"]+)"/', $html, $m);
+        $this->postJson('/ecwid/fake-app/settings/verify', ['settings' => ['api_key' => 'good']], ['X-Settings-Context' => stripslashes($m[1])])
+            ->assertJson(['ok' => true]);
+    }
+
+    public function test_fragment_page_rejects_a_token_ecwid_does_not_accept(): void
+    {
+        Http::fake(['app.ecwid.com/*' => Http::response(['errorMessage' => 'Invalid token'], 403)]);
+
+        $this->post('/ecwid/fake-app/settings/open', ['store_id' => '1003', 'access_token' => 'forged', 'lang' => 'en'])
+            ->assertForbidden()
+            ->assertDontSee('var context', false);
+
+        $this->assertDatabaseMissing('ecwid_stores', ['store_id' => 1003]);
+    }
+
+    public function test_fragment_page_needs_store_and_token(): void
+    {
+        Http::fake();
+
+        $this->post('/ecwid/fake-app/settings/open', ['store_id' => 'abc', 'access_token' => 'x'])->assertForbidden();
+        $this->post('/ecwid/fake-app/settings/open', ['store_id' => '1003'])->assertForbidden();
+
+        Http::assertNothingSent();
     }
 
     public function test_save_writes_each_setting_to_ecwid_storage(): void
@@ -86,7 +152,7 @@ class SettingsPageTest extends TestCase
             ->assertOk()->assertJson(['ok' => true]);
 
         $puts = collect(Http::recorded())->map(fn ($pair) => $pair[0])->filter(fn (Request $r) => $r->method() === 'PUT')
-            ->mapWithKeys(fn (Request $r) => [basename($r->url()) => $r['value']]);
+            ->mapWithKeys(fn (Request $r) => [basename($r->url()) => $r->body()]);
 
         $this->assertSame(['api_key' => 'new-key', 'sandbox' => 'false', 's4d_license' => 'ECWID-1', 'installed' => 'yes'], $puts->all());
     }

@@ -80,7 +80,7 @@ class EcwidApi
         $values = [];
         foreach ((array) $response->json() as $entry) {
             if (isset($entry['key'])) {
-                $values[$entry['key']] = (string) ($entry['value'] ?? '');
+                $values[$entry['key']] = self::storageValue($entry['value'] ?? '');
             }
         }
 
@@ -89,7 +89,25 @@ class EcwidApi
 
     public function putStorage(int $storeId, string $token, string $key, string $value): void
     {
-        $this->client($token)->put("$storeId/storage/".rawurlencode($key), ['value' => $value])->throw();
+        // Ecwid stores the request body as-is: a JSON {"value": ...} body
+        // would come back (and reach payment requests) still wrapped.
+        $this->client($token)->withBody($value, 'text/plain')->put("$storeId/storage/".rawurlencode($key))->throw();
+    }
+
+    /**
+     * A stored value as the merchant entered it. Unwraps values an earlier
+     * version saved as {"value": "..."}.
+     */
+    public static function storageValue(mixed $value): string
+    {
+        if (is_string($value) && str_starts_with($value, '{"value":')) {
+            $decoded = json_decode($value, true);
+            if (is_array($decoded) && array_keys($decoded) === ['value'] && is_scalar($decoded['value'])) {
+                return (string) $decoded['value'];
+            }
+        }
+
+        return is_scalar($value) ? (string) $value : '';
     }
 
     private function client(string $token): PendingRequest

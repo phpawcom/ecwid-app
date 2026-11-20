@@ -39,11 +39,17 @@ class SettingsController extends Controller
     {
         abort_unless($app->is_active, 404);
 
-        $context = SettingsContext::fromPayload($app, (string) $request->query('payload', ''));
-        $gateway = $this->gateways->get($app->gateway);
+        // Apps without Ecwid's encrypted payload get the store details in the
+        // URL fragment, which never reaches us: hand out a small page that
+        // reads it and posts it back to open().
+        if (! $request->filled('payload')) {
+            return response()->view('ecwid.open', ['app' => $app]);
+        }
+
+        $context = SettingsContext::fromPayload($app, (string) $request->query('payload'));
 
         if (! $context) {
-            return response()->view('ecwid.error', ['message' => 'Open this page from your Ecwid admin (My Apps).'], 403);
+            return $this->errorPage($app, 'Open this page from your Ecwid admin (My Apps).', 403);
         }
 
         $values = [];
@@ -55,6 +61,46 @@ class SettingsController extends Controller
             $loadError = 'Your saved settings could not be loaded from Ecwid. Reload the page to try again.';
         }
 
+        return $this->settingsPage($context, $values, $loadError);
+    }
+
+    /**
+     * The settings page for apps whose store details come from the URL
+     * fragment (unencrypted, so the browser could send anything). The token
+     * is only trusted once Ecwid accepts it for this store.
+     */
+    public function open(Request $request, EcwidApp $app): Response
+    {
+        abort_unless($app->is_active, 404);
+
+        $storeId = filter_var($request->input('store_id'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $token = (string) $request->input('access_token', '');
+        $lang = (string) $request->input('lang', 'en');
+
+        if (! $storeId || $token === '') {
+            return $this->errorPage($app, 'Open this page from your Ecwid admin (My Apps).', 403);
+        }
+
+        $context = new SettingsContext($app, $storeId, $token, preg_match('/^[a-z]{2}(_[A-Za-z]{2})?$/', $lang) ? $lang : 'en');
+
+        try {
+            $values = $this->ecwid->getStorage($context->storeId, $context->accessToken);
+        } catch (Throwable $e) {
+            Log::warning('Ecwid did not accept the settings page token', ['store' => $storeId, 'error' => $e->getMessage()]);
+
+            return $this->errorPage($app, 'Ecwid did not confirm access to this store. Reload the page from your Ecwid admin to try again.', 403);
+        }
+
+        return $this->settingsPage($context, $values, null);
+    }
+
+    /**
+     * @param  array<string, string>  $values
+     */
+    private function settingsPage(SettingsContext $context, array $values, ?string $loadError): Response
+    {
+        $app = $context->app;
+        $gateway = $this->gateways->get($app->gateway);
         $store = $this->rememberStore($context);
 
         // First visit: fill in defaults (v1 did this through the JS SDK).
@@ -77,6 +123,11 @@ class SettingsController extends Controller
                 'lastReceivedAt' => $store->last_webhook_at,
             ] : null,
         ]);
+    }
+
+    private function errorPage(EcwidApp $app, string $message, int $status): Response
+    {
+        return response()->view('ecwid.error', ['message' => $message, 'ecwidAppId' => $app->client_id], $status);
     }
 
     public function save(Request $request, EcwidApp $app): JsonResponse

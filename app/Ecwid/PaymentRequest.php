@@ -35,7 +35,10 @@ final class PaymentRequest
      */
     public function merchantSettings(): array
     {
-        return (array) ($this->data['merchantAppSettings'] ?? []);
+        return array_map(
+            fn ($value) => is_string($value) ? EcwidApi::storageValue($value) : $value,
+            (array) ($this->data['merchantAppSettings'] ?? []),
+        );
     }
 
     /**

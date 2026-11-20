@@ -27,6 +27,7 @@ Route::prefix('ecwid/{app}')->name('ecwid.')->group(function () {
 
     Route::get('settings', [SettingsController::class, 'show'])->name('settings');
     Route::middleware('throttle:30,1')->group(function () {
+        Route::post('settings/open', [SettingsController::class, 'open'])->name('settings.open');
         Route::post('settings', [SettingsController::class, 'save'])->name('settings.save');
         Route::post('settings/license', [SettingsController::class, 'checkLicense'])->name('settings.license');
         Route::post('settings/verify', [SettingsController::class, 'verifyGateway'])->name('settings.verify');
