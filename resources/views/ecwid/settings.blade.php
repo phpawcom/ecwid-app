@@ -100,7 +100,9 @@
 @php($modeField = collect($fields)->first(fn ($f) => $f->type === 'radio' && array_key_exists('true', $f->options)))
 <div class="s4d">
     <header class="s4d-header">
-        <img src="{{ asset('images/gateways/'.$gateway->key().'-512x512.png') }}" alt="">
+        @if (file_exists(public_path('images/gateways/'.$gateway->key().'-512x512.png')))
+            <img src="{{ asset('images/gateways/'.$gateway->key().'-512x512.png') }}" alt="">
+        @endif
         <div>
             <h1>{{ $gateway->name() }} payments</h1>
             <p>Accept Visa and MasterCard in your Ecwid store through {{ $gateway->name() }}.</p>

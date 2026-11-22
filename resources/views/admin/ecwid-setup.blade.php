@@ -3,7 +3,7 @@
 @section('content')
     <h1>Ecwid setup</h1>
     <p class="muted" style="margin-top: -8px; max-width: 760px">
-        Each Ecwid app (the public Thawani app or a store's custom app) needs these URLs in its settings on the Ecwid side.
+        Each Ecwid app (a public gateway app or a store's custom app) needs these URLs in its settings on the Ecwid side.
         Set them in the app's details in your Ecwid developer account, or send them to Ecwid support for apps they manage.
         The client secret Ecwid gave you for the app must match the one registered here.
     </p>
@@ -66,14 +66,14 @@
     @empty
         <div class="card muted">
             No Ecwid apps registered yet. Add one with
-            <code>php artisan ecwid:app &lt;client_id&gt; --gateway=thawani --secret=…</code>,
+            <code>php artisan ecwid:app &lt;client_id&gt; --gateway=thawani|ompay --secret=…</code>,
             or import the v1 apps with <code>php artisan ecwid:import-legacy</code>.
         </div>
     @endforelse
 
     <div class="card">
         <h2 style="margin-top: 0">Gateway webhooks</h2>
-        <p style="margin: 0">Webhook URLs are per store, not per app. Each merchant sees their own URL on the app's settings page in Ecwid, adds it in their Thawani merchant portal, and pastes Thawani's webhook secret back on that page. You can see a store's URL and whether its secret is saved under <a href="{{ route('admin.licenses.index') }}">Licenses</a>.</p>
+        <p style="margin: 0">Webhook URLs are per store, not per app. Each merchant sees their own URL on the app's settings page in Ecwid, adds it in their gateway's merchant portal, and pastes the signing secret back on that page (Thawani: its webhook secret; OmPay: the API Secret of the mode in use). You can see a store's URL and whether its secret is saved under <a href="{{ route('admin.licenses.index') }}">Licenses</a>.</p>
     </div>
 
     <div class="card">

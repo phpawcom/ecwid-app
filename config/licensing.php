@@ -57,6 +57,10 @@ return [
             'addons' => ['Thawani', 'Credit'],
             'products' => ['Thawani'],
         ],
+        'ompay' => [
+            'addons' => ['OmPay', 'TruePay'],
+            'products' => ['OmPay'],
+        ],
     ],
 
     'allow_without_addons' => ['thawani'],

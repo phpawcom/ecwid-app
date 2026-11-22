@@ -1,5 +1,6 @@
 <?php
 
+use App\Payments\Gateways\OmPay\OmPayGateway;
 use App\Payments\Gateways\Thawani\ThawaniGateway;
 
 return [
@@ -18,6 +19,7 @@ return [
 
     'gateways' => [
         'thawani' => ThawaniGateway::class,
+        'ompay' => OmPayGateway::class,
     ],
 
 ];
