@@ -10,7 +10,8 @@ return [
     | Merchants enter an S4D license key in the app settings. It is checked
     | against the WHMCS "Licensing Manager" module (modules/servers/licensing).
     | The secret must match the "MD5 Hash Verification" value of the WHMCS
-    | licensing product.
+    | licensing product. A gateway sold as its own WHMCS product sets its own
+    | "secret" below; the others use this one.
     |
     */
 
@@ -41,7 +42,8 @@ return [
     | Gateway <-> license mapping
     |--------------------------------------------------------------------------
     |
-    | Which license unlocks which payment gateway. A gateway is allowed when
+    | Which license unlocks which payment gateway, and optionally the WHMCS
+    | product secret used to check licenses for stores on that gateway. A gateway is allowed when
     | the license is Active and either:
     |   - one of the license's WHMCS addons has a name containing any of the
     |     gateway's "addons" strings (case-insensitive) with status Active, or
@@ -59,7 +61,8 @@ return [
         ],
         'ompay' => [
             'addons' => ['OmPay', 'TruePay'],
-            'products' => ['OmPay'],
+            'products' => ['OmPay'], // "Ecwid: OMPAY Gateway"
+            'secret' => env('LICENSE_SECRET_OMPAY'),
         ],
     ],
 

@@ -27,8 +27,9 @@ class WhmcsLicenseChecker
 
     /**
      * @param  string|null  $domain  the store's domain to report to WHMCS (defaults to LICENSE_DOMAIN, then this app's host)
+     * @param  string|null  $gateway  the store's gateway; picks the WHMCS product secret when that gateway has its own
      */
-    public function check(string $licenseKey, bool $forceRemote = false, ?string $domain = null): LicenseResult
+    public function check(string $licenseKey, bool $forceRemote = false, ?string $domain = null, ?string $gateway = null): LicenseResult
     {
         $licenseKey = trim($licenseKey);
 
@@ -41,7 +42,7 @@ class WhmcsLicenseChecker
         }
 
         $domain = $domain ?: $this->defaultDomain();
-        $cacheKey = $this->cacheKey($licenseKey, $domain);
+        $cacheKey = $this->cacheKey($licenseKey, $domain, $gateway);
         $cached = $this->cache->get($cacheKey);
         $cachedAt = isset($cached['checked_at']) ? CarbonImmutable::parse($cached['checked_at']) : null;
 
@@ -49,7 +50,7 @@ class WhmcsLicenseChecker
             return LicenseResult::fromWhmcs($cached['data'], $cachedAt, fromCache: true);
         }
 
-        $remote = $this->remoteCheck($licenseKey, $domain);
+        $remote = $this->remoteCheck($licenseKey, $domain, $this->secret($gateway));
 
         if ($remote === null) {
             // WHMCS unreachable: fall back to the last good result while it is
@@ -73,20 +74,39 @@ class WhmcsLicenseChecker
         return $result;
     }
 
-    public function forget(string $licenseKey, ?string $domain = null): void
+    public function forget(string $licenseKey, ?string $domain = null, ?string $gateway = null): void
     {
-        $this->cache->forget($this->cacheKey(trim($licenseKey), $domain ?: $this->defaultDomain()));
+        $this->cache->forget($this->cacheKey(trim($licenseKey), $domain ?: $this->defaultDomain(), $gateway));
     }
 
-    private function cacheKey(string $licenseKey, string $domain): string
+    /**
+     * Results checked with a gateway's own secret are cached apart, so they
+     * never stand in for a check made with another product's secret.
+     */
+    private function cacheKey(string $licenseKey, string $domain, ?string $gateway): string
     {
-        return 'license:'.hash('sha256', $licenseKey.'|'.$domain);
+        $scope = $this->gatewaySecret($gateway) !== null ? '|'.$gateway : '';
+
+        return 'license:'.hash('sha256', $licenseKey.'|'.$domain.$scope);
+    }
+
+    /** The "MD5 Hash Verification" secret of the WHMCS product for this gateway. */
+    private function secret(?string $gateway): string
+    {
+        return $this->gatewaySecret($gateway) ?? (string) config('licensing.secret');
+    }
+
+    private function gatewaySecret(?string $gateway): ?string
+    {
+        $secret = $gateway === null ? null : config("licensing.gateways.$gateway.secret");
+
+        return is_string($secret) && $secret !== '' ? $secret : null;
     }
 
     /**
      * @return array<string, string>|null the WHMCS response fields, or null when the server could not be reached
      */
-    private function remoteCheck(string $licenseKey, string $domain): ?array
+    private function remoteCheck(string $licenseKey, string $domain, string $secret): ?array
     {
         $checkToken = time().md5(Str::random(32).$licenseKey);
         $url = config('licensing.server_url').config('licensing.verify_path');
@@ -129,7 +149,6 @@ class WhmcsLicenseChecker
             return ['status' => 'Invalid', 'description' => 'Unexpected response from the license server.'];
         }
 
-        $secret = (string) config('licensing.secret');
         if (! empty($data['md5hash']) && ! hash_equals(md5($secret.$checkToken), $data['md5hash'])) {
             $logResult(false, 'md5hash verification failed');
 

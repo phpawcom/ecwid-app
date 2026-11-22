@@ -108,4 +108,30 @@ class WhmcsLicenseCheckerTest extends TestCase
         $this->assertFalse(app(WhmcsLicenseChecker::class)->check('  ')->isActive());
         Http::assertNothingSent();
     }
+
+    public function test_gateway_with_its_own_product_secret_verifies_with_that_secret(): void
+    {
+        config(['licensing.gateways.ompay.secret' => 'ompay-secret']);
+        Http::fake(['*/modules/servers/licensing/verify.php' => fn (Request $request) => Http::response(
+            '<status>Active</status><productname>Ecwid: OMPAY Gateway</productname><md5hash>'.md5('ompay-secret'.$request['check_token']).'</md5hash>'
+        )]);
+        $checker = app(WhmcsLicenseChecker::class);
+
+        $ompay = $checker->check('ECWID-OMPAY', gateway: 'ompay');
+        $thawani = $checker->check('ECWID-OMPAY', gateway: 'thawani');
+
+        $this->assertTrue($ompay->isActive());
+        $this->assertFalse($thawani->isActive());
+        $this->assertStringContainsString('verification', $thawani->description);
+    }
+
+    public function test_gateway_without_its_own_secret_uses_the_default_secret(): void
+    {
+        config(['licensing.gateways.ompay.secret' => null]);
+        $this->fakeWhmcs();
+
+        $result = app(WhmcsLicenseChecker::class)->check('ECWID-1234', gateway: 'ompay');
+
+        $this->assertTrue($result->isActive());
+    }
 }

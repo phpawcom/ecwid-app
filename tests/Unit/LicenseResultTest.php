@@ -56,4 +56,11 @@ class LicenseResultTest extends TestCase
     {
         $this->assertSame([], LicenseResult::fromWhmcs(['status' => 'Suspended'])->allowedGateways());
     }
+
+    public function test_ompay_product_license_unlocks_ompay(): void
+    {
+        $result = LicenseResult::fromWhmcs(['status' => 'Active', 'productname' => 'Ecwid: OMPAY Gateway']);
+
+        $this->assertTrue($result->allowsGateway('ompay'));
+    }
 }

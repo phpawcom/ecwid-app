@@ -32,7 +32,7 @@ class SettingsPageTest extends TestCase
         $checker = Mockery::mock(WhmcsLicenseChecker::class);
         $expectation = $checker->shouldReceive('check');
         if ($expectKey !== null) {
-            $expectation->with($expectKey, $expectForce, Mockery::any());
+            $expectation->with($expectKey, $expectForce, Mockery::any(), 'fake');
         }
         $expectation->andReturn(LicenseResult::fromWhmcs([
             'status' => $status, 'addons' => $addons, 'productname' => 'Ecwid Payments',
@@ -92,7 +92,7 @@ class SettingsPageTest extends TestCase
             'app.ecwid.com/api/v3/1003/profile' => Http::response(['generalInfo' => ['storeUrl' => 'https://www.Keatha.com/shop']]),
         ]);
         $checker = Mockery::mock(WhmcsLicenseChecker::class);
-        $checker->shouldReceive('check')->once()->with('ECWID-1', true, 'keatha.com')->andReturn(LicenseResult::fromWhmcs(['status' => 'Active']));
+        $checker->shouldReceive('check')->once()->with('ECWID-1', true, 'keatha.com', 'fake')->andReturn(LicenseResult::fromWhmcs(['status' => 'Active']));
         $this->app->instance(WhmcsLicenseChecker::class, $checker);
 
         $html = $this->get('/ecwid/fake-app/settings?payload='.$this->payload())

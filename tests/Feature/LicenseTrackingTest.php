@@ -197,7 +197,7 @@ class LicenseTrackingTest extends TestCase
         $store = EcwidStore::create(['ecwid_app_id' => $this->thawani->id, 'store_id' => 1003, 'license_key' => 'ECWID-K', 'license_status' => 'Active']);
 
         $checker = Mockery::mock(WhmcsLicenseChecker::class);
-        $checker->shouldReceive('check')->once()->with('ECWID-K', true, Mockery::any())->andReturn(LicenseResult::fromWhmcs(['status' => 'Suspended', 'description' => 'Overdue invoice']));
+        $checker->shouldReceive('check')->once()->with('ECWID-K', true, Mockery::any(), 'thawani')->andReturn(LicenseResult::fromWhmcs(['status' => 'Suspended', 'description' => 'Overdue invoice']));
         $this->app->instance(WhmcsLicenseChecker::class, $checker);
 
         $this->post("/admin/licenses/{$store->id}/recheck")

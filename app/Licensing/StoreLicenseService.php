@@ -33,7 +33,7 @@ class StoreLicenseService
 
         $result = $this->logger->withContext(
             ['ecwid_app_id' => $app->id, 'store_id' => $storeId, 'operation' => 'license.verify'],
-            fn () => $this->checker->check($licenseKey, $forceRemote, $store->domain()),
+            fn () => $this->checker->check($licenseKey, $forceRemote, $store->domain(), $app->gateway),
         );
 
         $store->last_seen_at = now();
