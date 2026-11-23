@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Logging\LogRetention;
 use App\Models\EcwidApp;
+use App\Models\EcwidStore;
 use App\Models\GatewayLog;
 use App\Models\PaymentTransaction;
 use App\Models\Setting;
@@ -99,6 +100,19 @@ class AdminTest extends TestCase
 
         $this->put('/admin/settings', ['log_retention' => '12'])->assertSessionHasErrors('log_retention');
         $this->assertSame(LogRetention::Never, LogRetention::current());
+    }
+
+    public function test_logs_show_the_store_domain(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $app = EcwidApp::create(['client_id' => 'thawani-gateway', 'client_secret' => 'x', 'gateway' => 'thawani', 'name' => 'Thawani']);
+        $store = EcwidStore::create(['ecwid_app_id' => $app->id, 'store_id' => 1003, 'store_url' => 'https://www.keatha.com/shop']);
+        $log = $this->log(['ecwid_app_id' => $app->id, 'store_id' => 1003]);
+
+        $this->get('/admin/logs')->assertOk()
+            ->assertSee('keatha.com')
+            ->assertSee(route('admin.licenses.show', $store), false);
+        $this->get("/admin/logs/{$log->id}")->assertOk()->assertSee('keatha.com');
     }
 
     public function test_admin_forms_carry_csrf_token(): void

@@ -12,6 +12,14 @@
             <dt>Duration</dt><dd>{{ $log->duration_ms !== null ? $log->duration_ms.' ms' : '—' }}</dd>
             <dt>Ecwid app</dt><dd>{{ $log->app?->name ?? '—' }}</dd>
             <dt>Store ID</dt><dd>{{ $log->store_id ?? '—' }}</dd>
+            <dt>Domain</dt>
+            <dd>
+                @if ($store)
+                    <a href="{{ route('admin.licenses.show', $store) }}">{{ $store->domain() ?? '—' }}</a>
+                @else
+                    —
+                @endif
+            </dd>
             <dt>Payment</dt>
             <dd>
                 @if ($log->transaction)

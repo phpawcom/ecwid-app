@@ -73,7 +73,15 @@
                     <td>{{ $log->service }}</td>
                     <td>{{ $log->operation }}</td>
                     <td>@include('admin.partials.result')</td>
-                    <td>{{ $log->store_id ?? '—' }}</td>
+                    <td>
+                        @php($store = $stores[$log->ecwid_app_id.':'.$log->store_id] ?? null)
+                        @if ($store)
+                            <a href="{{ route('admin.licenses.show', $store) }}">{{ $store->domain() ?? $store->displayName() }}</a>
+                            <div class="muted" style="font-size: 12px">#{{ $log->store_id }}</div>
+                        @else
+                            {{ $log->store_id ?? '—' }}
+                        @endif
+                    </td>
                     <td>
                         @if ($log->transaction)
                             <a href="{{ route('admin.transactions.show', $log->transaction) }}">{{ $log->transaction->order_number ?: $log->transaction->public_id }}</a>

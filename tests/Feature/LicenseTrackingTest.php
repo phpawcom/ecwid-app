@@ -173,11 +173,11 @@ class LicenseTrackingTest extends TestCase
         $this->actingAs(User::factory()->create());
         $this->fakeWhmcs();
         app(StoreLicenseService::class)->check($this->thawani, 1003, 'ECWID-ACTIVE1', via: 'settings');
-        EcwidStore::where('store_id', 1003)->update(['store_name' => 'Example Shop']);
+        EcwidStore::where('store_id', 1003)->update(['store_name' => 'Example Shop', 'store_url' => 'https://www.example-shop.om']);
         EcwidStore::create(['ecwid_app_id' => $this->thawani->id, 'store_id' => 2004, 'store_name' => 'Keyless Shop']);
 
         $this->get('/admin/licenses')->assertOk()
-            ->assertSee('Example Shop')->assertSee('ECWID-ACTIVE1')->assertSee('Ahmed Al Balushi')->assertSee('2027-01-31')
+            ->assertSee('Example Shop')->assertSee('example-shop.om')->assertSee('ECWID-ACTIVE1')->assertSee('Ahmed Al Balushi')->assertSee('2027-01-31')
             ->assertSee('Keyless Shop')->assertSee('No license');
 
         $this->get('/admin/licenses?status=active')->assertOk()->assertSee('Example Shop')->assertDontSee('Keyless Shop');
@@ -187,7 +187,7 @@ class LicenseTrackingTest extends TestCase
 
         $store = EcwidStore::where('store_id', 1003)->sole();
         $this->get("/admin/licenses/{$store->id}")->assertOk()
-            ->assertSee('Example LLC')->assertSee('Annually')->assertSee('Re-check with WHMCS now')
+            ->assertSee('Example LLC')->assertSee('example-shop.om')->assertSee('Annually')->assertSee('Re-check with WHMCS now')
             ->assertSee(route('admin.logs.show', GatewayLog::where('service', 'whmcs')->sole()), false);
     }
 

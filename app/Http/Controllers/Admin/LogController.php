@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EcwidStore;
 use App\Models\GatewayLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class LogController extends Controller
@@ -38,6 +40,7 @@ class LogController extends Controller
 
         return view('admin.logs.index', [
             'logs' => $logs,
+            'stores' => $this->storesFor($logs->getCollection()),
             'filters' => $filters,
             'services' => GatewayLog::query()->distinct()->orderBy('service')->pluck('service'),
             'operations' => GatewayLog::query()->distinct()->orderBy('operation')->pluck('operation'),
@@ -48,6 +51,27 @@ class LogController extends Controller
     {
         $log->load(['app', 'transaction']);
 
-        return view('admin.logs.show', ['log' => $log]);
+        return view('admin.logs.show', ['log' => $log, 'store' => $this->storesFor(collect([$log]))->first()]);
+    }
+
+    /**
+     * The stores the logs belong to (for their domains), keyed "{ecwid_app_id}:{store_id}".
+     *
+     * @param  Collection<int, GatewayLog>  $logs
+     * @return Collection<string, EcwidStore>
+     */
+    private function storesFor(Collection $logs): Collection
+    {
+        $storeIds = $logs->pluck('store_id')->filter()->unique();
+
+        if ($storeIds->isEmpty()) {
+            return collect();
+        }
+
+        return EcwidStore::query()
+            ->whereIn('store_id', $storeIds)
+            ->whereIn('ecwid_app_id', $logs->pluck('ecwid_app_id')->filter()->unique())
+            ->get()
+            ->keyBy(fn (EcwidStore $store): string => $store->ecwid_app_id.':'.$store->store_id);
     }
 }

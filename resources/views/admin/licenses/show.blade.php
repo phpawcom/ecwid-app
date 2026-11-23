@@ -9,6 +9,7 @@
             <h2 style="margin-top: 0">Store</h2>
             <dl class="meta">
                 <dt>Ecwid store ID</dt><dd>{{ $store->store_id }}</dd>
+                <dt>Domain</dt><dd>{{ $store->domain() ?? '—' }}</dd>
                 <dt>Store URL</dt><dd>@if ($store->store_url)<a href="{{ $store->store_url }}" target="_blank" rel="noopener noreferrer">{{ $store->store_url }}</a>@else — @endif</dd>
                 <dt>Owner email</dt><dd>{{ $store->store_email ?? '—' }}</dd>
                 <dt>Ecwid app</dt><dd>{{ $store->app->name }} <span class="muted">({{ $store->app->client_id }})</span></dd>

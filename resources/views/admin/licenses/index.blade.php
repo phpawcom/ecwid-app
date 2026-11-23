@@ -10,7 +10,7 @@
     <form method="get" class="card filters">
         <div style="grid-column: span 2">
             <label for="q">Search</label>
-            <input id="q" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="License key, store, owner…">
+            <input id="q" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="License key, store, domain, owner…">
         </div>
         <div>
             <label for="status">License</label>
@@ -56,7 +56,7 @@
                 <tr class="clickable">
                     <td>
                         <a href="{{ route('admin.licenses.show', $store) }}">{{ $store->displayName() }}</a>
-                        <div class="muted" style="font-size: 12px">#{{ $store->store_id }}</div>
+                        <div class="muted" style="font-size: 12px">{{ $store->domain() ? $store->domain().' · ' : '' }}#{{ $store->store_id }}</div>
                     </td>
                     <td>{{ $store->app->name }}</td>
                     <td><code>{{ $store->license_key ?? '—' }}</code></td>
