@@ -179,6 +179,18 @@ class AdminTest extends TestCase
             ->assertSee('update_orders');
     }
 
+    public function test_how_to_page_lists_gateways_and_commands(): void
+    {
+        $this->get('/admin/how-to')->assertRedirect('/admin/login');
+
+        $this->actingAs(User::factory()->create());
+
+        $this->get('/admin/how-to')->assertOk()
+            ->assertSee('--gateway=thawani|ompay', false)
+            ->assertSee('OmPay')
+            ->assertSee('config/payments.php');
+    }
+
     public function test_ecwid_setup_warns_when_app_url_is_not_public_https(): void
     {
         $this->actingAs(User::factory()->create());

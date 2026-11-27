@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\EcwidSetupController;
+use App\Http\Controllers\Admin\HowToController;
 use App\Http\Controllers\Admin\LicenseController;
 use App\Http\Controllers\Admin\LogController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
@@ -67,6 +68,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('logs', [LogController::class, 'index'])->name('logs.index');
         Route::get('logs/{log}', [LogController::class, 'show'])->name('logs.show');
         Route::get('ecwid-setup', [EcwidSetupController::class, 'index'])->name('ecwid-setup');
+        Route::get('how-to', HowToController::class)->name('how-to');
 
         Route::get('licenses', [LicenseController::class, 'index'])->name('licenses.index');
         Route::get('licenses/{store}', [LicenseController::class, 'show'])->name('licenses.show');

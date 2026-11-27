@@ -16,6 +16,7 @@
                 <a href="{{ route('admin.logs.index') }}" @class(['active' => request()->routeIs('admin.logs.*', 'admin.transactions.*')])>Logs</a>
                 <a href="{{ route('admin.licenses.index') }}" @class(['active' => request()->routeIs('admin.licenses.*')])>Licenses</a>
                 <a href="{{ route('admin.ecwid-setup') }}" @class(['active' => request()->routeIs('admin.ecwid-setup')])>Ecwid setup</a>
+                <a href="{{ route('admin.how-to') }}" @class(['active' => request()->routeIs('admin.how-to')])>How-to</a>
                 <a href="{{ route('admin.settings.edit') }}" @class(['active' => request()->routeIs('admin.settings.*')])>Settings</a>
             </nav>
             <form method="post" action="{{ route('admin.logout') }}">
